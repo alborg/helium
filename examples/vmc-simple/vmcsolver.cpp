@@ -16,6 +16,7 @@ VMCSolver::VMCSolver() :
     h2(1000000),
     idum(-1),
     alpha(0.5*charge),
+    beta(1)
     nCycles(1000000)
 {
 }
@@ -133,6 +134,7 @@ double VMCSolver::localEnergy(const mat &r)
 
 double VMCSolver::waveFunction(const mat &r)
 {
+    //Sum of rs: r1 + r2...
     double argument = 0;
     for(int i = 0; i < nParticles; i++) {
         double rSingleParticle = 0;
@@ -141,5 +143,18 @@ double VMCSolver::waveFunction(const mat &r)
         }
         argument += sqrt(rSingleParticle);
     }
+    //Distance r12 etc
+    double r12 = 0;
+    double rParticles = zeros<mat>(nParticles);
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = i + 1; j < nParticles; j++) {
+            r12 = 0;
+            for(int k = 0; k < nDimensions; k++) {
+                r12 += (r(i,k) - r(j,k)) * (r(i,k) - r(j,k));
+            }
+            rParticles(i) = sqrt(r12);
+        }
+    }
+
     return exp(-argument * alpha);
 }
