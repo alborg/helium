@@ -1,7 +1,8 @@
 #include "vmcsolver.h"
 #include "lib.h"
 
-#include <armadillo>
+#include "../../../armadillo/include/armadillo"
+
 #include <iostream>
 
 using namespace arma;
@@ -15,16 +16,17 @@ VMCSolver::VMCSolver() :
     h(0.001),
     h2(1000000),
     idum(-1),
-    alpha(0.5*charge),
-    beta(1)
-    nCycles(1000000)
+    nCycles(1000000),
+    alpha(0),
+    beta(0)
 {
 }
 
-void VMCSolver::runMonteCarloIntegration()
+mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
 {
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
+    mat energies = zeros(2);
 
     double waveFunctionOld = 0;
     double waveFunctionNew = 0;
@@ -76,7 +78,9 @@ void VMCSolver::runMonteCarloIntegration()
     }
     double energy = energySum/(nCycles * nParticles);
     double energySquared = energySquaredSum/(nCycles * nParticles);
-    cout << "Energy: " << energy << " Energy (squared sum): " << energySquared << endl;
+    energies << energy << energySquared;
+//    cout << "Energy: " << energy << " Energy (squared sum): " << energySquared << endl;
+    return energies;
 }
 
 double VMCSolver::localEnergy(const mat &r)
@@ -132,9 +136,10 @@ double VMCSolver::localEnergy(const mat &r)
     return kineticEnergy + potentialEnergy;
 }
 
+
+
 double VMCSolver::waveFunction(const mat &r)
 {
-    //Sum of rs: r1 + r2...
     double argument = 0;
     for(int i = 0; i < nParticles; i++) {
         double rSingleParticle = 0;
@@ -143,18 +148,18 @@ double VMCSolver::waveFunction(const mat &r)
         }
         argument += sqrt(rSingleParticle);
     }
-    //Distance r12 etc
+
     double r12 = 0;
-    double rParticles = zeros<mat>(nParticles);
+    double interaction = 0;
     for(int i = 0; i < nParticles; i++) {
         for(int j = i + 1; j < nParticles; j++) {
             r12 = 0;
             for(int k = 0; k < nDimensions; k++) {
                 r12 += (r(i,k) - r(j,k)) * (r(i,k) - r(j,k));
             }
-            rParticles(i) = sqrt(r12);
+            interaction += sqrt(r12)/(2*(1+beta*sqrt(r12)));
         }
     }
 
-    return exp(-argument * alpha);
+    return exp(-argument * alpha)*exp(interaction);
 }

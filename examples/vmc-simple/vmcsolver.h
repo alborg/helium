@@ -1,7 +1,7 @@
 #ifndef VMCSOLVER_H
 #define VMCSOLVER_H
 
-#include <armadillo>
+#include "../../../armadillo/include/armadillo"
 
 using namespace arma;
 
@@ -10,7 +10,7 @@ class VMCSolver
 public:
     VMCSolver();
 
-    void runMonteCarloIntegration();
+    mat runMonteCarloIntegration(const double &alpha, const double &beta);
 
 private:
     double waveFunction(const mat &r);
@@ -27,6 +27,7 @@ private:
     long idum;
 
     double alpha;
+    double beta;
 
     int nCycles;
 
