@@ -12,7 +12,7 @@ int main()
     double beta = 0.0;
     double alpha_step = 0.1;
     double beta_step = 0.1;
-    int n_steps = 2;
+    int n_steps = 10;
     mat energies = zeros(n_steps,n_steps);
     mat energySquareds = zeros(n_steps,n_steps);
 
@@ -25,7 +25,7 @@ int main()
             beta = l*beta_step;
             mat energy = solver->runMonteCarloIntegration(alpha, beta);
             cout << alpha << " " << beta << energy << endl;
-            energies[k][l] = energy[0];
+            //energies[k][l] = energy[0];
            // energySquareds[k][l] = energy[1];
 
         }
