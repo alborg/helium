@@ -19,10 +19,11 @@ VMCSolver::VMCSolver() :
     nCycles(1000000),
     alpha(0),
     beta(0)
+
 {
 }
 
-mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
+mat VMCSolver::runMonteCarloIntegration(const double &alpha_in, const double &beta_in)
 {
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
@@ -38,6 +39,9 @@ mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
     int count_total = 0;
 
     double deltaE;
+
+    alpha = alpha_in;
+    beta = beta_in;
 
     // initial trial positions
     for(int i = 0; i < nParticles; i++) {
@@ -79,14 +83,16 @@ mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
             deltaE = localEnergy(rNew);
             energySum += deltaE;
             energySquaredSum += deltaE*deltaE;
+
         }
+
     }
+
     double energy = energySum/(nCycles * nParticles);
     double energySquared = energySquaredSum/(nCycles * nParticles);
     energies << energy << energySquared;
 //    cout << "Energy: " << energy << " Energy (squared sum): " << energySquared << endl;
-    cout << accepted_steps << " " << count_total << endl;
-    accepted_steps = 0;
+ //   cout << accepted_steps << " " << count_total << endl;
     return energies;
 }
 

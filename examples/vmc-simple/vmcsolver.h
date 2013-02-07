@@ -10,7 +10,7 @@ class VMCSolver
 public:
     VMCSolver();
 
-    mat runMonteCarloIntegration(const double &alpha, const double &beta);
+    mat runMonteCarloIntegration(const double &alpha_in, const double &beta_in);
 
 private:
     double waveFunction(const mat &r);
@@ -26,12 +26,10 @@ private:
 
     long idum;
 
+    int nCycles;
+
     double alpha;
     double beta;
-
-    int accepted_steps;
-
-    int nCycles;
 
     mat rOld;
     mat rNew;
