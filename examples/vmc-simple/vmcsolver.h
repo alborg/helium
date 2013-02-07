@@ -1,7 +1,7 @@
 #ifndef VMCSOLVER_H
 #define VMCSOLVER_H
 
-#include "../../../armadillo/include/armadillo"
+#include <armadillo>
 
 using namespace arma;
 
@@ -28,6 +28,8 @@ private:
 
     double alpha;
     double beta;
+
+    int accepted_steps;
 
     int nCycles;
 

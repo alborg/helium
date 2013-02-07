@@ -1,7 +1,7 @@
 #include "vmcsolver.h"
 #include "lib.h"
 
-#include "../../../armadillo/include/armadillo"
+#include <armadillo>
 
 #include <iostream>
 
@@ -34,6 +34,9 @@ mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
     double energySum = 0;
     double energySquaredSum = 0;
 
+    int accepted_steps = 0;
+    int count_total = 0;
+
     double deltaE;
 
     // initial trial positions
@@ -58,12 +61,14 @@ mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
 
             // Recalculate the value of the wave function
             waveFunctionNew = waveFunction(rNew);
+            ++count_total;
 
             // Check for step acceptance (if yes, update position, if no, reset position)
             if(ran2(&idum) <= (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
                 for(int j = 0; j < nDimensions; j++) {
                     rOld(i,j) = rNew(i,j);
                     waveFunctionOld = waveFunctionNew;
+                    ++accepted_steps;
                 }
             } else {
                 for(int j = 0; j < nDimensions; j++) {
@@ -80,6 +85,8 @@ mat VMCSolver::runMonteCarloIntegration(const double &alpha, const double &beta)
     double energySquared = energySquaredSum/(nCycles * nParticles);
     energies << energy << energySquared;
 //    cout << "Energy: " << energy << " Energy (squared sum): " << energySquared << endl;
+    cout << accepted_steps << " " << count_total << endl;
+    accepted_steps = 0;
     return energies;
 }
 
