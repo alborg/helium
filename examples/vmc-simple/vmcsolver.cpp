@@ -4,6 +4,7 @@
 #include <armadillo>
 #include <fstream>
 #include <iostream>
+#include <mpi.h>
 
 
 using namespace arma;
@@ -18,11 +19,11 @@ VMCSolver::VMCSolver() :
     h2(1000000),
     idum(-1),
     nCycles(1000000),
-    alpha_min(1.4),
-    alpha_max(1.9),
+    alpha_min(1.7),
+    alpha_max(1.85),
     alpha_steps(10),
-    beta_min(0.1),
-    beta_max(1.1),
+    beta_min(0.2),
+    beta_max(0.45),
     beta_steps(10)
 
 
@@ -56,6 +57,7 @@ void VMCSolver::runMonteCarloIntegration()
     double alpha_step = (alpha_max - alpha_min)/(alpha_steps-1);
     double beta_step = (beta_max - beta_min)/(beta_steps-1);
 
+
     vec alphas = zeros(alpha_steps);
     vec betas = zeros(beta_steps);
 
@@ -68,7 +70,7 @@ void VMCSolver::runMonteCarloIntegration()
         alphas(k) = alpha;
         for (double l=0; l<beta_steps; l++) {
             beta = beta_min + l*beta_step;
-            cout << "k,l,alpha,beta" << k << " " << l <<" "<< alpha << " " << beta <<endl;
+            cout << "k,l,alpha,beta: " << k << " " << l <<" "<< alpha << " " << beta <<endl;
             betas(l) = beta;
 
             // initial trial positions
@@ -122,7 +124,7 @@ void VMCSolver::runMonteCarloIntegration()
             energies(k,l) = energySum/(nCycles * nParticles);
             energySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
 
-            cout << "Energy" << energies(k,l) << endl;
+            cout << "Energy: " << energies(k,l) << endl;
 
             energySum = 0;
             energySquaredSum = 0;
