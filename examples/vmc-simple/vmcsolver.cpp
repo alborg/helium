@@ -1,5 +1,8 @@
 #include "vmcsolver.h"
 #include "lib.h"
+#include "WaveFunction.h"
+#include "hamiltonian.h"
+
 
 #include <armadillo>
 #include <fstream>
@@ -17,12 +20,12 @@ VMCSolver::VMCSolver() :
     h2(1000000),
     idum(-1),
     nCycles(1000000),
-    alpha_min(1.7),
-    alpha_max(1.85),
-    alpha_steps(10),
-    beta_min(0.2),
-    beta_max(0.45),
-    beta_steps(10)
+    alpha_min(1),
+    alpha_max(2),
+    alpha_steps(6),
+    beta_min(0.1),
+    beta_max(0.6),
+    beta_steps(6)
 
 
 {
@@ -31,12 +34,15 @@ VMCSolver::VMCSolver() :
 void VMCSolver::runMonteCarloIntegration()
 {
 
-    char file_energies[] = "..\\..\\..\\output\\energy.txt";
-    char file_energySquareds[] = "..\\..\\..\\output\\squareds.txt";
-    char file_alpha[] = "..\\..\\..\\output\\alpha_beta.txt";
+    char file_energies[] = "../../../output/energy.txt";
+    char file_energySquareds[] = "../../../output/squareds.txt";
+    char file_alpha[] = "../../../output/alpha_beta.txt";
 
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
+
+    WaveFunction *function = new WaveFunction(nParticles, nDimensions);
+    Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
 
     double waveFunctionOld = 0;
     double waveFunctionNew = 0;
@@ -71,6 +77,7 @@ void VMCSolver::runMonteCarloIntegration()
             cout << "k,l,alpha,beta: " << k << " " << l <<" "<< alpha << " " << beta <<endl;
             betas(l) = beta;
 
+
             // initial trial positions
             for(int i = 0; i < nParticles; i++) {
                 for(int j = 0; j < nDimensions; j++) {
@@ -83,7 +90,7 @@ void VMCSolver::runMonteCarloIntegration()
             for(int cycle = 0; cycle < nCycles; cycle++) {
 
                 // Store the current value of the wave function
-                waveFunctionOld = waveFunction(rOld, alpha, beta);
+                waveFunctionOld = function->waveFunction(rOld, alpha, beta);
 
                 // New position to test
                 for(int i = 0; i < nParticles; i++) {
@@ -92,7 +99,7 @@ void VMCSolver::runMonteCarloIntegration()
                     }
 
                     // Recalculate the value of the wave function
-                    waveFunctionNew = waveFunction(rNew, alpha, beta);
+                    waveFunctionNew = function->waveFunction(rNew, alpha, beta);
                     ++count_total;
 
                     // Check for step acceptance (if yes, update position, if no, reset position)
@@ -108,7 +115,8 @@ void VMCSolver::runMonteCarloIntegration()
                         }
                     }
                     // update energies
-                    deltaE = localEnergy(rNew, alpha, beta);
+                    deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
+                    //deltaE = localEnergy(rNew, alpha, beta, function);
                     energySum += deltaE;
                     energySquaredSum += deltaE*deltaE;
 
@@ -122,7 +130,7 @@ void VMCSolver::runMonteCarloIntegration()
             energies(k,l) = energySum/(nCycles * nParticles);
             energySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
 
-            cout << "Energy: " << energies(k,l) << endl;
+            cout << "Energy: " << energies(k,l)*2*13.6 << endl;
 
             energySum = 0;
             energySquaredSum = 0;
@@ -138,7 +146,8 @@ void VMCSolver::runMonteCarloIntegration()
 
 }
 
-double VMCSolver::localEnergy(const mat &r, const double &alpha, const double &beta)
+
+double VMCSolver::localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function)
 {
     mat rPlus = zeros<mat>(nParticles, nDimensions);
     mat rMinus = zeros<mat>(nParticles, nDimensions);
@@ -148,7 +157,7 @@ double VMCSolver::localEnergy(const mat &r, const double &alpha, const double &b
     double waveFunctionMinus = 0;
     double waveFunctionPlus = 0;
 
-    double waveFunctionCurrent = waveFunction(r, alpha, beta);
+    double waveFunctionCurrent = function->waveFunction(r, alpha, beta);
 
     // Kinetic energy
 
@@ -157,8 +166,8 @@ double VMCSolver::localEnergy(const mat &r, const double &alpha, const double &b
         for(int j = 0; j < nDimensions; j++) {
             rPlus(i,j) += h;
             rMinus(i,j) -= h;
-            waveFunctionMinus = waveFunction(rMinus, alpha, beta);
-            waveFunctionPlus = waveFunction(rPlus, alpha, beta);
+            waveFunctionMinus = function->waveFunction(rMinus, alpha, beta);
+            waveFunctionPlus = function->waveFunction(rPlus, alpha, beta);
             kineticEnergy -= (waveFunctionMinus + waveFunctionPlus - 2 * waveFunctionCurrent);
             rPlus(i,j) = r(i,j);
             rMinus(i,j) = r(i,j);
@@ -192,33 +201,6 @@ double VMCSolver::localEnergy(const mat &r, const double &alpha, const double &b
 }
 
 
-
-double VMCSolver::waveFunction(const mat &r, const double &alpha, const double &beta)
-{
-    double argument = 0;
-    for(int i = 0; i < nParticles; i++) {
-        double rSingleParticle = 0;
-        for(int j = 0; j < nDimensions; j++) {
-            rSingleParticle += r(i,j) * r(i,j);
-        }
-        argument += sqrt(rSingleParticle);
-    }
-
-    double r12 = 0;
-    double interaction = 0;
-    for(int i = 0; i < nParticles; i++) {
-        for(int j = i + 1; j < nParticles; j++) {
-            r12 = 0;
-            for(int k = 0; k < nDimensions; k++) {
-                r12 += (r(i,k) - r(j,k)) * (r(i,k) - r(j,k));
-            }
-            interaction += sqrt(r12)/(2*(1+beta*sqrt(r12)));
-        }
-    }
-
-
-    return exp(-argument * alpha)*exp(interaction);
-}
 
 void VMCSolver::printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
 {

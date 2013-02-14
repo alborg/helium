@@ -2,6 +2,7 @@
 #define VMCSOLVER_H
 
 #include <armadillo>
+#include "WaveFunction.h"
 
 using namespace arma;
 using namespace std;
@@ -14,8 +15,7 @@ public:
     void runMonteCarloIntegration();
 
 private:
-    double waveFunction(const mat &r, const double &alpha, const double &beta);
-    double localEnergy(const mat &r, const double &alpha, const double &beta);
+    double localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function);
     void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
     int nDimensions;
@@ -39,6 +39,8 @@ private:
     double beta_min;
     double beta_max;
     int beta_steps;
+
+
 
 };
 

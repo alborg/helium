@@ -23,10 +23,12 @@ LIBS += -llapack -lblas -larmadillo
 SOURCES += main.cpp \
     vmcsolver.cpp \
     lib.cpp \
-    WaveFunction.cpp
+    WaveFunction.cpp \
+    hamiltonian.cpp
 
 HEADERS += \
     vmcsolver.h \
     lib.h \
-    WaveFunction.h
+    WaveFunction.h \
+    hamiltonian.h
 

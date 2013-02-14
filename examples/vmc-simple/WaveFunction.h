@@ -11,8 +11,8 @@ class WaveFunction {
 
 public:
 
-    WaveFunction(int nParticles_, int nDimensions_, double alpha_, double beta_);
-    double waveFunction(const mat &r);
+    WaveFunction(int nParticles_, int nDimensions_);
+    double waveFunction(const mat &r, double alpha, double beta);
 
 private:
 
