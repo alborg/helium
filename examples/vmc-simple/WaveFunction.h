@@ -11,15 +11,17 @@ class WaveFunction {
 
 public:
 
-    WaveFunction(int nP, int nD);
-    double WaveFunction::waveFunction(const mat &r);
+    WaveFunction(int nParticles_, int nDimensions_, double alpha_, double beta_);
+    double waveFunction(const mat &r);
 
 private:
 
-    double WaveFunction::jastrowFactor(const mat &r);
+    double jastrowFactor(const mat &r);
 
     int nDimensions;
     int nParticles;
+    double alpha;
+    double beta;
 
 
 };
