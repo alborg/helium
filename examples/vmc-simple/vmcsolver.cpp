@@ -2,7 +2,7 @@
 #include "lib.h"
 
 #include <armadillo>
-
+#include <fstream>
 #include <iostream>
 
 using namespace arma;
@@ -17,17 +17,26 @@ VMCSolver::VMCSolver() :
     h2(1000000),
     idum(-1),
     nCycles(1000000),
-    alpha(0),
-    beta(0)
+    alpha_min(1.7),
+    alpha_max(1.85),
+    alpha_steps(10),
+    beta_min(0.2),
+    beta_max(0.45),
+    beta_steps(10)
+
 
 {
 }
 
-mat VMCSolver::runMonteCarloIntegration(const double &alpha_in, const double &beta_in)
+void VMCSolver::runMonteCarloIntegration()
 {
+
+    char file_energies[] = "..\\..\\..\\output\\energy.txt";
+    char file_energySquareds[] = "..\\..\\..\\output\\squareds.txt";
+    char file_alpha[] = "..\\..\\..\\output\\alpha_beta.txt";
+
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
-    mat energies = zeros(2);
 
     double waveFunctionOld = 0;
     double waveFunctionNew = 0;
@@ -40,63 +49,96 @@ mat VMCSolver::runMonteCarloIntegration(const double &alpha_in, const double &be
 
     double deltaE;
 
-    alpha = alpha_in;
-    beta = beta_in;
+    double alpha = 0;
+    double beta = 0;
 
-    // initial trial positions
-    for(int i = 0; i < nParticles; i++) {
-        for(int j = 0; j < nDimensions; j++) {
-            rOld(i,j) = stepLength * (ran2(&idum) - 0.5);
-        }
-    }
-    rNew = rOld;
+    double alpha_step = (alpha_max - alpha_min)/(alpha_steps-1);
+    double beta_step = (beta_max - beta_min)/(beta_steps-1);
 
-    // loop over Monte Carlo cycles
-    for(int cycle = 0; cycle < nCycles; cycle++) {
 
-        // Store the current value of the wave function
-        waveFunctionOld = waveFunction(rOld);
+    vec alphas = zeros(alpha_steps);
+    vec betas = zeros(beta_steps);
 
-        // New position to test
-        for(int i = 0; i < nParticles; i++) {
-            for(int j = 0; j < nDimensions; j++) {
-                rNew(i,j) = rOld(i,j) + stepLength*(ran2(&idum) - 0.5);
-            }
+    mat energies = zeros(alpha_steps,beta_steps);
+    mat energySquareds = zeros(alpha_steps,beta_steps);
 
-            // Recalculate the value of the wave function
-            waveFunctionNew = waveFunction(rNew);
-            ++count_total;
 
-            // Check for step acceptance (if yes, update position, if no, reset position)
-            if(ran2(&idum) <= (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
+    for (double k=0; k<alpha_steps; k++) {
+        alpha = alpha_min + k*alpha_step;
+        alphas(k) = alpha;
+        for (double l=0; l<beta_steps; l++) {
+            beta = beta_min + l*beta_step;
+            cout << "k,l,alpha,beta: " << k << " " << l <<" "<< alpha << " " << beta <<endl;
+            betas(l) = beta;
+
+            // initial trial positions
+            for(int i = 0; i < nParticles; i++) {
                 for(int j = 0; j < nDimensions; j++) {
-                    rOld(i,j) = rNew(i,j);
-                    waveFunctionOld = waveFunctionNew;
-                    ++accepted_steps;
-                }
-            } else {
-                for(int j = 0; j < nDimensions; j++) {
-                    rNew(i,j) = rOld(i,j);
+                    rOld(i,j) = stepLength * (ran2(&idum) - 0.5);
                 }
             }
-            // update energies
-            deltaE = localEnergy(rNew);
-            energySum += deltaE;
-            energySquaredSum += deltaE*deltaE;
+            rNew = rOld;
+
+            // loop over Monte Carlo cycles
+            for(int cycle = 0; cycle < nCycles; cycle++) {
+
+                // Store the current value of the wave function
+                waveFunctionOld = waveFunction(rOld, alpha, beta);
+
+                // New position to test
+                for(int i = 0; i < nParticles; i++) {
+                    for(int j = 0; j < nDimensions; j++) {
+                        rNew(i,j) = rOld(i,j) + stepLength*(ran2(&idum) - 0.5);
+                    }
+
+                    // Recalculate the value of the wave function
+                    waveFunctionNew = waveFunction(rNew, alpha, beta);
+                    ++count_total;
+
+                    // Check for step acceptance (if yes, update position, if no, reset position)
+                    if(ran2(&idum) <= (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
+                        ++accepted_steps;
+                        for(int j = 0; j < nDimensions; j++) {
+                            rOld(i,j) = rNew(i,j);
+                            waveFunctionOld = waveFunctionNew;
+                        }
+                    } else {
+                        for(int j = 0; j < nDimensions; j++) {
+                            rNew(i,j) = rOld(i,j);
+                        }
+                    }
+                    // update energies
+                    deltaE = localEnergy(rNew, alpha, beta);
+                    energySum += deltaE;
+                    energySquaredSum += deltaE*deltaE;
+
+                }
+
+            }
+
+
+            cout << "accepted steps, total steps: " << accepted_steps << " " << count_total << endl;
+
+            energies(k,l) = energySum/(nCycles * nParticles);
+            energySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
+
+            cout << "Energy: " << energies(k,l) << endl;
+
+            energySum = 0;
+            energySquaredSum = 0;
+            accepted_steps = 0;
+            count_total = 0;
 
         }
-
     }
 
-    double energy = energySum/(nCycles * nParticles);
-    double energySquared = energySquaredSum/(nCycles * nParticles);
-    energies << energy << energySquared;
-//    cout << "Energy: " << energy << " Energy (squared sum): " << energySquared << endl;
- //   cout << accepted_steps << " " << count_total << endl;
-    return energies;
+    cout << energies*2*13.6 << endl;
+
+    printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
+
 }
 
-double VMCSolver::localEnergy(const mat &r)
+double VMCSolver::localEnergy(const mat &r, const double &alpha, const double &beta)
 {
     mat rPlus = zeros<mat>(nParticles, nDimensions);
     mat rMinus = zeros<mat>(nParticles, nDimensions);
@@ -106,7 +148,7 @@ double VMCSolver::localEnergy(const mat &r)
     double waveFunctionMinus = 0;
     double waveFunctionPlus = 0;
 
-    double waveFunctionCurrent = waveFunction(r);
+    double waveFunctionCurrent = waveFunction(r, alpha, beta);
 
     // Kinetic energy
 
@@ -115,8 +157,8 @@ double VMCSolver::localEnergy(const mat &r)
         for(int j = 0; j < nDimensions; j++) {
             rPlus(i,j) += h;
             rMinus(i,j) -= h;
-            waveFunctionMinus = waveFunction(rMinus);
-            waveFunctionPlus = waveFunction(rPlus);
+            waveFunctionMinus = waveFunction(rMinus, alpha, beta);
+            waveFunctionPlus = waveFunction(rPlus, alpha, beta);
             kineticEnergy -= (waveFunctionMinus + waveFunctionPlus - 2 * waveFunctionCurrent);
             rPlus(i,j) = r(i,j);
             rMinus(i,j) = r(i,j);
@@ -151,7 +193,7 @@ double VMCSolver::localEnergy(const mat &r)
 
 
 
-double VMCSolver::waveFunction(const mat &r)
+double VMCSolver::waveFunction(const mat &r, const double &alpha, const double &beta)
 {
     double argument = 0;
     for(int i = 0; i < nParticles; i++) {
@@ -174,5 +216,54 @@ double VMCSolver::waveFunction(const mat &r)
         }
     }
 
+
     return exp(-argument * alpha)*exp(interaction);
+}
+
+void VMCSolver::printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
+{
+
+    ofstream myfile(&file_energies);
+    if (myfile.is_open())
+    {
+        for (unsigned int f=0; f<energies.n_rows; f++)
+        {
+            for (unsigned int l=0; l<energies.n_cols; l++) {
+                myfile << energies(f,l)*2*13.6 << " ";
+            }
+            myfile << endl;
+        }
+
+        myfile.close();
+    }
+    else cout << "Unable to open file" << endl;
+
+
+    ofstream myfile2 (&file_alpha);
+    if (myfile2.is_open())
+    {
+        myfile2 << alphas << endl;
+        myfile2 << betas << endl;
+
+        myfile2.close();
+    }
+    else cout << "Unable to open file" << endl;
+
+
+    ofstream myfile3(&file_energySquareds);
+    if (myfile3.is_open())
+    {
+        for (unsigned int f=0; f<energiesSquared.n_rows; f++)
+        {
+            for (unsigned int l=0; l<energiesSquared.n_cols; l++) {
+                myfile3 << energiesSquared(f,l)*2*13.6 << " ";
+            }
+            myfile3 << endl;
+        }
+
+        myfile3.close();
+    }
+    else cout << "Unable to open file" << endl;
+
+
 }

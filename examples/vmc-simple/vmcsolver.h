@@ -4,17 +4,19 @@
 #include <armadillo>
 
 using namespace arma;
+using namespace std;
 
 class VMCSolver
 {
 public:
     VMCSolver();
 
-    mat runMonteCarloIntegration(const double &alpha_in, const double &beta_in);
+    void runMonteCarloIntegration();
 
 private:
-    double waveFunction(const mat &r);
-    double localEnergy(const mat &r);
+    double waveFunction(const mat &r, const double &alpha, const double &beta);
+    double localEnergy(const mat &r, const double &alpha, const double &beta);
+    void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
     int nDimensions;
     int charge;
@@ -28,11 +30,16 @@ private:
 
     int nCycles;
 
-    double alpha;
-    double beta;
-
     mat rOld;
     mat rNew;
+
+    double alpha_min;
+    double alpha_max;
+    int alpha_steps;
+    double beta_min;
+    double beta_max;
+    int beta_steps;
+
 };
 
 #endif // VMCSOLVER_H
