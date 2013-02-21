@@ -15,7 +15,6 @@ public:
     void runMonteCarloIntegration();
 
 private:
-    double localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function);
     void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
     int nDimensions;

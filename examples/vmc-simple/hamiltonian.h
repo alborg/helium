@@ -13,9 +13,9 @@ public:
 private:
     int nDimensions;
     int nParticles;
-    int h;
-    int h2;
-    double charge;
+    double h;
+    double h2;
+    int charge;
 
 };
 

@@ -25,6 +25,7 @@ double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double 
 
     double waveFunctionCurrent = function->waveFunction(r, alpha, beta);
 
+
     // Kinetic energy
 
     double kineticEnergy = 0;
