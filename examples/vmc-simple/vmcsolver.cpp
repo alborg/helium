@@ -22,10 +22,10 @@ VMCSolver::VMCSolver() :
     nCycles(1000000),
     alpha_min(1.7),
     alpha_max(1.8),
-    alpha_steps(10),
+    alpha_steps(3),
     beta_min(0.55),
     beta_max(0.65),
-    beta_steps(10)
+    beta_steps(3)
 
 
 {
@@ -118,7 +118,8 @@ void VMCSolver::runMonteCarloIntegration()
                         }
                     }
                     // update energies
-                    deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
+                    //deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
+                    deltaE = hamiltonian->analyticLocalEnergy(rNew, alpha, beta);
                     energySum += deltaE;
                     energySquaredSum += deltaE*deltaE;
 
