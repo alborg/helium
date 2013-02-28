@@ -7,6 +7,7 @@
 #include <armadillo>
 #include <fstream>
 #include <iostream>
+#include <mpi.h>
 
 using namespace arma;
 using namespace std;
@@ -31,7 +32,7 @@ VMCSolver::VMCSolver() :
 {
 }
 
-void VMCSolver::runMonteCarloIntegration()
+void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 {
 
     char file_energies[] = "../../../output/energy.txt";
@@ -62,6 +63,8 @@ void VMCSolver::runMonteCarloIntegration()
     double alpha_step = (alpha_max - alpha_min)/(alpha_steps-1);
     double beta_step = (beta_max - beta_min)/(beta_steps-1);
 
+    double energyTot = 0;
+    double energySquaredTot = 0;
 
     vec alphas = zeros(alpha_steps);
     vec betas = zeros(beta_steps);
@@ -69,15 +72,27 @@ void VMCSolver::runMonteCarloIntegration()
     mat energies = zeros(alpha_steps,beta_steps);
     mat energySquareds = zeros(alpha_steps,beta_steps);
 
+    int id, np;
+    //double eTime,sTime;
 
-    for (double k=0; k<alpha_steps; k++) {
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &id);
+    MPI_Comm_size(MPI_COMM_WORLD, &np);
+//            sTime = MPI_Wtime();
+
+    int mpi_steps = alpha_steps/np;
+    int remainder = alpha_steps%np;
+    int mpi_start = mpi_steps*id;
+    int mpi_stop = mpi_start + mpi_steps;
+    if (id == np-1) mpi_stop += remainder;
+
+    for (double k=mpi_start; k<mpi_stop; k++) {
         alpha = alpha_min + k*alpha_step;
         alphas(k) = alpha;
         for (double l=0; l<beta_steps; l++) {
             beta = beta_min + l*beta_step;
             cout << "k,l,alpha,beta: " << k << " " << l <<" "<< alpha << " " << beta <<endl;
             betas(l) = beta;
-
 
             // initial trial positions
             for(int i = 0; i < nParticles; i++) {
@@ -86,6 +101,7 @@ void VMCSolver::runMonteCarloIntegration()
                 }
             }
             rNew = rOld;
+
 
             // loop over Monte Carlo cycles
             for(int cycle = 0; cycle < nCycles; cycle++) {
@@ -118,8 +134,8 @@ void VMCSolver::runMonteCarloIntegration()
                         }
                     }
                     // update energies
-                    //deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
-                    deltaE = hamiltonian->analyticLocalEnergy(rNew, alpha, beta);
+                    deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
+                    //deltaE = hamiltonian->analyticLocalEnergy(rNew, alpha, beta);
                     energySum += deltaE;
                     energySquaredSum += deltaE*deltaE;
 
@@ -145,6 +161,16 @@ void VMCSolver::runMonteCarloIntegration()
 
         }
     }
+
+    energyTot = energySquaredTot = 0;
+    MPI_Allreduce(&energySum,&energyTot,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Allreduce(&energySquaredSum,&energySquaredTot,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+//            eTime = MPI_Wtime();
+//            pTime = fabs(eTime - sTime);
+
+    MPI_Finalize();
 
     cout << energies*2*13.6 << endl;
 

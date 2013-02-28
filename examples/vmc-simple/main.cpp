@@ -5,11 +5,12 @@
 using namespace arma;
 using namespace std;
 
-int main()
+int main(int argc, char* argv[])
 {
+
     VMCSolver *solver = new VMCSolver();
 
-    solver->runMonteCarloIntegration();
+    solver->runMonteCarloIntegration(argc, argv);
 
 
     return 0;

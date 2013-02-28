@@ -12,7 +12,7 @@ class VMCSolver
 public:
     VMCSolver();
 
-    void runMonteCarloIntegration();
+    void runMonteCarloIntegration(int argc, char* argv[]);
 
 private:
     void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
