@@ -9,6 +9,7 @@
 #include <iostream>
 #include <mpi.h>
 
+
 using namespace arma;
 using namespace std;
 
@@ -21,12 +22,12 @@ VMCSolver::VMCSolver() :
     h2(1000000),
     idum(-1),
     nCycles(1000000),
-    alpha_min(1.7),
-    alpha_max(1.8),
-    alpha_steps(3),
-    beta_min(0.55),
-    beta_max(0.65),
-    beta_steps(3)
+    alpha_min(1),
+    alpha_max(2),
+    alpha_steps(2),
+    beta_min(0.5),
+    beta_max(0.7),
+    beta_steps(2)
 
 
 {
@@ -63,9 +64,6 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     double alpha_step = (alpha_max - alpha_min)/(alpha_steps-1);
     double beta_step = (beta_max - beta_min)/(beta_steps-1);
 
-    double energyTot = 0;
-    double energySquaredTot = 0;
-
     vec alphas = zeros(alpha_steps);
     vec betas = zeros(beta_steps);
 
@@ -75,6 +73,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     int id, np;
     //double eTime,sTime;
 
+    //mpd --ncpus=4 &
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
     MPI_Comm_size(MPI_COMM_WORLD, &np);
@@ -82,14 +81,22 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
     int mpi_steps = alpha_steps/np;
     int remainder = alpha_steps%np;
+
+    //cout << "mpi steps " << mpi_steps << " remainder " << remainder << endl;
+
+    mat pEnergies = zeros(alpha_steps,beta_steps);
+    mat pEnergySquareds = zeros(alpha_steps,beta_steps);
+
     int mpi_start = mpi_steps*id;
     int mpi_stop = mpi_start + mpi_steps;
     if (id == np-1) mpi_stop += remainder;
 
-    for (double k=mpi_start; k<mpi_stop; k++) {
+    //cout << "Id " << id << " k start, stop " << mpi_start << " " << mpi_stop << endl;
+
+    for (int k=mpi_start; k<mpi_stop; k++) {
         alpha = alpha_min + k*alpha_step;
         alphas(k) = alpha;
-        for (double l=0; l<beta_steps; l++) {
+        for (int l=0; l<beta_steps; l++) {
             beta = beta_min + l*beta_step;
             cout << "k,l,alpha,beta: " << k << " " << l <<" "<< alpha << " " << beta <<endl;
             betas(l) = beta;
@@ -144,14 +151,16 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
             }
 
 
+            cout << "Process id: " << id << " " << k + l <<endl;
             cout << "accepted steps, total steps: " << accepted_steps << " " << count_total << endl;
 
-            energies(k,l) = energySum/(nCycles * nParticles);
-            energySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
+            pEnergies(k,l) = energySum/(nCycles * nParticles);
+            pEnergySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
             average_dist = average_dist/accepted_steps;
 
             cout << "Average r12: " << average_dist << endl;
-            cout << "Energy: " << energies(k,l)*2*13.6 << endl;
+            cout << "Energy: " << pEnergies(k,l)*2*13.6 << endl;
+            cout << "--------------------------" << endl;
 
             energySum = 0;
             energySquaredSum = 0;
@@ -162,19 +171,24 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
         }
     }
 
-    energyTot = energySquaredTot = 0;
-    MPI_Allreduce(&energySum,&energyTot,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    MPI_Allreduce(&energySquaredSum,&energySquaredTot,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
+
 
 //            eTime = MPI_Wtime();
 //            pTime = fabs(eTime - sTime);
 
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    cout << "Id " << id << " Energies: " << pEnergies*2*13.6 << endl;
+
+    //MPI_Allreduce(&pEnergies, &energies, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+   // MPI_Allreduce(&pEnergySquareds, &energySquareds, alpha_steps*beta_steps, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
     MPI_Finalize();
 
-    cout << energies*2*13.6 << endl;
+    //cout << energies*2*13.6 << endl;
 
-    printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
+    //printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
 
 }
 
