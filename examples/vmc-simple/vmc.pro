@@ -12,7 +12,7 @@ DEPENDPATH += C:\Libs
 
 unix {
 
-LIBS += -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpi #-lmpich
+LIBS += -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpich #-lmpich
 INCLUDEPATH += /usr/include/mpich2-x86_64/ /usr/include/mpi/
 
 }
@@ -23,14 +23,16 @@ SOURCES += main.cpp \
     lib.cpp \
     WaveFunction.cpp \
     hamiltonian.cpp \
-    vmcimportance.cpp
+    vmcimportance.cpp \
+    slaterdeterminant.cpp
 
 HEADERS += \
     vmcsolver.h \
     lib.h \
     WaveFunction.h \
     hamiltonian.h \
-    vmcimportance.h
+    vmcimportance.h \
+    slaterdeterminant.h
 
 
 #Maximize (-O3)

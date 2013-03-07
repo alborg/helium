@@ -16,7 +16,7 @@ using namespace std;
 VMCImportance::VMCImportance():
     nDimensions(3),
     charge(2),
-    nParticles(2),
+    nParticles(4),
     h(0.001),
     h2(1000000),
     idum(-1),
@@ -24,10 +24,10 @@ VMCImportance::VMCImportance():
     alpha_min(1.6),
     alpha_max(1.7),
     alpha_steps(2),
-    beta_min(0.3),
-    beta_max(0.4),
+    beta_min(0.2),
+    beta_max(0.3),
     beta_steps(2),
-    timestep(0.05),
+    timestep(0.01),
     D(0.5)
 
 
@@ -78,12 +78,11 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
     MPI_Comm_size(MPI_COMM_WORLD, &np);
-//            sTime = MPI_Wtime();
+    //            sTime = MPI_Wtime();
 
     int mpi_steps = alpha_steps/np;
     int remainder = alpha_steps%np;
 
-    //cout << "mpi steps " << mpi_steps << " remainder " << remainder << endl;
 
     mat pEnergies = zeros(alpha_steps,beta_steps);
     mat pEnergySquareds = zeros(alpha_steps,beta_steps);
@@ -94,7 +93,6 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     int mpi_stop = mpi_start + mpi_steps;
     if (id == np-1) mpi_stop += remainder;
 
-    //cout << "Id " << id << " k start, stop " << mpi_start << " " << mpi_stop << endl;
 
     for (int k=mpi_start; k<mpi_stop; k++) {
         alpha = alpha_min + k*alpha_step;
@@ -124,22 +122,22 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
                     }
 
                     //Move only one particle.
-                    for (int k=0; k<nParticles; k++) {
-                        if(k != 0) {
+                    for (int g=0; g<nParticles; g++) {
+                        if(g != i) {
                             for(int j=0; j<nDimensions; j++) {
-                                rNew(k,j) = rOld(k,j);
+                                rNew(g,j) = rOld(g,j);
                             }
                         }
                     }
 
-                    // Recalculate the value of the wave function
+                    // Recalculate the wave function
                     waveFunctionNew = function->waveFunction(rNew, alpha, beta);
                     qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
 
                     //Greens function
                     double greensFunction = 0;
                     for(int j=0; j<nDimensions; j++) {
-                        greensFunction += 0.5*(qForceOld(i,j) + qForceNew(i,j)) * (0.5*D*timestep*(qForceOld(i,j) - qForceNew(i,j) - rNew(i,j) + rOld(i,j)));
+                        greensFunction += 0.5*(qForceOld(i,j) + qForceNew(i,j)) * (0.5*D*timestep*(qForceOld(i,j) - qForceNew(i,j)) - rNew(i,j) + rOld(i,j));
                     }
                     greensFunction = exp(greensFunction);
 
@@ -151,26 +149,28 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
                         for(int j = 0; j < nDimensions; j++) {
                             rOld(i,j) = rNew(i,j);
                             qForceOld(i,j) = qForceNew(i,j);
-                            rowvec r12 = rOld.row(1) - rOld.row(0);
-                            average_dist += norm(r12, 2);
                         }
+//                        rowvec r12 = rOld.row(1) - rOld.row(0);
+//                        average_dist += norm(r12, 2);
                         waveFunctionOld = waveFunctionNew;
                     }
-//                    else {
-//                        for(int j = 0; j < nDimensions; j++) {
-//                            rNew(i,j) = rOld(i,j);
-//                            qForceNew(i,j) = qForceOld(i,j);
-//                        }
-//                    }
+                    else {
+                        for(int j = 0; j < nDimensions; j++) {
+                            rNew(i,j) = rOld(i,j);
+                            qForceNew(i,j) = qForceOld(i,j);
+                        }
+                    }
+
+
                     // update energies
                     deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
                     //deltaE = hamiltonian->analyticLocalEnergy(rNew, alpha, beta);
                     energySum += deltaE;
                     energySquaredSum += deltaE*deltaE;
 
-                }
+                } //End new position loop
 
-            }
+            } //End Monte Carlo loop
 
 
             cout << "Process id: " << id << " " << k + l <<endl;
@@ -180,7 +180,7 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
             pEnergySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
             average_dist = average_dist/accepted_steps;
 
-            cout << "Average r12: " << average_dist << endl;
+            //cout << "Average r12: " << average_dist << endl;
             cout << "Energy: " << pEnergies(k,l)*2*13.6 << endl;
             cout << "--------------------------" << endl;
 
@@ -190,13 +190,13 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
             count_total = 0;
             average_dist = 0;
 
-        }
-    }
+        } //End beta loop
+    } //End alpha loop
 
 
 
-//            eTime = MPI_Wtime();
-//            pTime = fabs(eTime - sTime);
+    //            eTime = MPI_Wtime();
+    //            pTime = fabs(eTime - sTime);
 
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -209,8 +209,8 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Finalize();
 
     if(id == 0) {
-        cout << energies*2*13.6 << endl;
-    printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
+        cout << energies << endl; //*2*13.6
+        printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
     }
 
 
@@ -232,11 +232,11 @@ mat VMCImportance::quantumForce(const mat &r, double alpha_, double beta_, doubl
 
     for(int i = 0; i < nParticles; i++) {
         for(int j = 0; j < nDimensions; j++) {
-            rPlus(i,j) += h;
-            rMinus(i,j) -= h;
+            rPlus(i,j) = r(i,j)+h;
+            rMinus(i,j) = r(i,j)-h;
             waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
             waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
-            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)*2/(wf*2*h);
+            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
             rPlus(i,j) = r(i,j);
             rMinus(i,j) = r(i,j);
         }
