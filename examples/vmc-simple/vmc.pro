@@ -22,13 +22,15 @@ SOURCES += main.cpp \
     vmcsolver.cpp \
     lib.cpp \
     WaveFunction.cpp \
-    hamiltonian.cpp
+    hamiltonian.cpp \
+    vmcimportance.cpp
 
 HEADERS += \
     vmcsolver.h \
     lib.h \
     WaveFunction.h \
-    hamiltonian.h
+    hamiltonian.h \
+    vmcimportance.h
 
 
 #Maximize (-O3)

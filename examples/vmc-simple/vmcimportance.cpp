@@ -1,4 +1,4 @@
-#include "vmcsolver.h"
+#include "vmcimportance.h"
 #include "lib.h"
 #include "WaveFunction.h"
 #include "hamiltonian.h"
@@ -13,10 +13,9 @@
 using namespace arma;
 using namespace std;
 
-VMCSolver::VMCSolver() :
+VMCImportance::VMCImportance():
     nDimensions(3),
     charge(2),
-    stepLength(1.0),
     nParticles(2),
     h(0.001),
     h2(1000000),
@@ -27,13 +26,15 @@ VMCSolver::VMCSolver() :
     alpha_steps(2),
     beta_min(0.3),
     beta_max(0.4),
-    beta_steps(2)
+    beta_steps(2),
+    timestep(0.05),
+    D(0.5)
 
 
 {
 }
 
-void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
+void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
 {
 
     char file_energies[] = "../../../output/energy.txt";
@@ -74,7 +75,6 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     //double eTime,sTime;
 
     //mpd --ncpus=4 &
-    //mpirun -np 2 exec
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
     MPI_Comm_size(MPI_COMM_WORLD, &np);
@@ -87,6 +87,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
     mat pEnergies = zeros(alpha_steps,beta_steps);
     mat pEnergySquareds = zeros(alpha_steps,beta_steps);
+    mat qForceOld = zeros(alpha_steps,beta_steps);
+    mat qForceNew = zeros(alpha_steps,beta_steps);
 
     int mpi_start = mpi_steps*id;
     int mpi_stop = mpi_start + mpi_steps;
@@ -102,45 +104,64 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
             cout << "k,l,alpha,beta: " << k << " " << l <<" "<< alpha << " " << beta <<endl;
             betas(l) = beta;
 
-            // initial trial positions
+            // initial positions
             for(int i = 0; i < nParticles; i++) {
                 for(int j = 0; j < nDimensions; j++) {
-                    rOld(i,j) = stepLength * (ran2(&idum) - 0.5);
+                    rOld(i,j) = gaussianDeviate(&idum)*sqrt(timestep);
                 }
             }
-            rNew = rOld;
 
+            waveFunctionOld = function->waveFunction(rOld, alpha, beta);
+            qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
 
             // loop over Monte Carlo cycles
             for(int cycle = 0; cycle < nCycles; cycle++) {
 
-                // Store the current value of the wave function
-                waveFunctionOld = function->waveFunction(rOld, alpha, beta);
-
                 // New position to test
                 for(int i = 0; i < nParticles; i++) {
                     for(int j = 0; j < nDimensions; j++) {
-                        rNew(i,j) = rOld(i,j) + stepLength*(ran2(&idum) - 0.5);
+                        rNew(i,j) = rOld(i,j) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(i,j)*timestep*D;
+                    }
+
+                    //Move only one particle.
+                    for (int k=0; k<nParticles; k++) {
+                        if(k != 0) {
+                            for(int j=0; j<nDimensions; j++) {
+                                rNew(k,j) = rOld(k,j);
+                            }
+                        }
                     }
 
                     // Recalculate the value of the wave function
                     waveFunctionNew = function->waveFunction(rNew, alpha, beta);
+                    qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
+
+                    //Greens function
+                    double greensFunction = 0;
+                    for(int j=0; j<nDimensions; j++) {
+                        greensFunction += 0.5*(qForceOld(i,j) + qForceNew(i,j)) * (0.5*D*timestep*(qForceOld(i,j) - qForceNew(i,j) - rNew(i,j) + rOld(i,j)));
+                    }
+                    greensFunction = exp(greensFunction);
+
                     ++count_total;
 
                     // Check for step acceptance (if yes, update position, if no, reset position)
-                    if(ran2(&idum) <= (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
+                    if(ran2(&idum) <= greensFunction * (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
                         ++accepted_steps;
                         for(int j = 0; j < nDimensions; j++) {
                             rOld(i,j) = rNew(i,j);
-                            waveFunctionOld = waveFunctionNew;
+                            qForceOld(i,j) = qForceNew(i,j);
                             rowvec r12 = rOld.row(1) - rOld.row(0);
                             average_dist += norm(r12, 2);
                         }
-                    } else {
-                        for(int j = 0; j < nDimensions; j++) {
-                            rNew(i,j) = rOld(i,j);
-                        }
+                        waveFunctionOld = waveFunctionNew;
                     }
+//                    else {
+//                        for(int j = 0; j < nDimensions; j++) {
+//                            rNew(i,j) = rOld(i,j);
+//                            qForceNew(i,j) = qForceOld(i,j);
+//                        }
+//                    }
                     // update energies
                     deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
                     //deltaE = hamiltonian->analyticLocalEnergy(rNew, alpha, beta);
@@ -191,12 +212,67 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
         cout << energies*2*13.6 << endl;
     printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
     }
+
+
+}
+
+
+mat VMCImportance::quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function) {
+
+    mat qforce = zeros(nParticles, nDimensions);
+    mat rPlus = zeros<mat>(nParticles, nDimensions);
+    mat rMinus = zeros<mat>(nParticles, nDimensions);
+
+    rPlus = rMinus = r;
+
+    double waveFunctionMinus = 0;
+    double waveFunctionPlus = 0;
+
+    //First derivative
+
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = 0; j < nDimensions; j++) {
+            rPlus(i,j) += h;
+            rMinus(i,j) -= h;
+            waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
+            waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
+            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)*2/(wf*2*h);
+            rPlus(i,j) = r(i,j);
+            rMinus(i,j) = r(i,j);
+        }
+    }
+
+    return qforce;
+}
+
+double VMCImportance::gaussianDeviate(long *idum) {
+
+    static int iset = 0;
+    static double gset;
+    double fac, rsq, v1, v2;
+
+    if ( idum < 0) iset =0;
+    if (iset == 0) {
+        do {
+            v1 = 2.*ran2(idum) -1.0;
+            v2 = 2.*ran2(idum) -1.0;
+            rsq = v1*v1+v2*v2;
+        } while (rsq >= 1.0 || rsq == 0.);
+        fac = sqrt(-2.*log(rsq)/rsq);
+        gset = v1*fac;
+        iset = 1;
+        return v2*fac;
+    } else {
+        iset =0;
+        return gset;
+    }
+
+
 }
 
 
 
-
-void VMCSolver::printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
+void VMCImportance::printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
 {
 
     ofstream myfile(&file_energies);
@@ -243,3 +319,4 @@ void VMCSolver::printFile(const char &file_energies, const char &file_energySqua
 
 
 }
+
