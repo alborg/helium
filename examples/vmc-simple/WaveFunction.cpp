@@ -12,7 +12,7 @@ WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 
     nDimensions(nDimensions_),
     nParticles(nParticles_),
-    slater(new slaterDeterminant(nParticles))
+    slater(new slaterDeterminant(nParticles,nDimensions))
 
 
 {
@@ -24,6 +24,7 @@ double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
     double argument = 0;
     double waveFunc = 0;
 
+    //Helium
     if(nParticles==2) {
         for(int i = 0; i < nParticles; i++) {
             double rSingleParticle = 0;
@@ -35,6 +36,7 @@ double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
         waveFunc = exp(-argument * alpha) * jastrowFactor(r);
     }
 
+//    //Beryllium
     if(nParticles ==4) {
         waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r);
     }
@@ -56,7 +58,7 @@ double WaveFunction::jastrowFactor(const mat &r) {
         for(int l=0;l<nParticles;l++) {
             if(k<l) {
                 r12 = r.row(k) - r.row(l);
-                r12norm = norm(r12,2);
+                r12norm = norm(r12,2); //Feil!
                 jastrow += r12norm / (2 * (1 + beta * r12norm));
             }
         }

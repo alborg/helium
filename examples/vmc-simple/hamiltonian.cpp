@@ -12,6 +12,7 @@ Hamiltonian::Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2
 }
 
 
+//Find the local energy (expectation value of the energy) numerically
 double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function)
 {
     double kinEnergy = kineticEnergy(r, alpha, beta, function);
@@ -20,9 +21,9 @@ double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double 
     return kinEnergy + potEnergy;
 }
 
+//Find the kinetic energy part of the local energy
 double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function)
 {
-
 
     mat rPlus = zeros<mat>(nParticles, nDimensions);
     mat rMinus = zeros<mat>(nParticles, nDimensions);
@@ -32,10 +33,9 @@ double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const doubl
     double waveFunctionMinus = 0;
     double waveFunctionPlus = 0;
 
-    double waveFunctionCurrent = function->waveFunction(r, alpha, beta);
+    double waveFunctionCurrent = function->waveFunction(r, alpha, beta); //Find wavefunction for r
 
-
-    // Kinetic energy
+    //Second derivative (del^2):
 
     double kineticEnergy = 0;
     for(int i = 0; i < nParticles; i++) {
@@ -57,7 +57,7 @@ double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const doubl
 
 double Hamiltonian::potentialEnergy(const mat &r)
 {
-    // Potential energy
+    // Potential energy (1/r part)
     double potentialEnergy = 0;
     double rSingleParticle = 0;
     for(int i = 0; i < nParticles; i++) {
@@ -67,7 +67,7 @@ double Hamiltonian::potentialEnergy(const mat &r)
         }
         potentialEnergy -= charge / sqrt(rSingleParticle);
     }
-    // Contribution from electron-electron potential
+    // Contribution from electron-electron potential (1/rij part)
 //    double r12 = 0;
 //    for(int i = 0; i < nParticles; i++) {
 //        for(int j = i + 1; j < nParticles; j++) {
@@ -82,10 +82,10 @@ double Hamiltonian::potentialEnergy(const mat &r)
     return potentialEnergy;
 }
 
-double Hamiltonian::analyticLocalEnergy(const mat &r, const double &alpha, const double &beta)
+double Hamiltonian::analyticEnergyH(const mat &r, const double &alpha, const double &beta)
 {
-    double r1 = norm(r.row(0),2);
-    double r2 = norm(r.row(1),2);
+    double r1 = sqrt(norm(r.row(0),2));
+    double r2 = sqrt(norm(r.row(1),2));
     double r12 = norm((r.row(1) - r.row(0)),2);
     double dot_r12;
     for (int i = 0; i < nDimensions; i++) { dot_r12 += r(0,i)*r(1,i); }

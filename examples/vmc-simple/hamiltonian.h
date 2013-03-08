@@ -9,7 +9,7 @@ class Hamiltonian
 public:
     Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2_, int charge_);
     double localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function);
-    double analyticLocalEnergy(const mat &r, const double &alpha, const double &beta);
+    double analyticEnergyH(const mat &r, const double &alpha, const double &beta);
 
 private:
     double kineticEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function);

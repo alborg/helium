@@ -12,7 +12,7 @@ DEPENDPATH += C:\Libs
 
 unix {
 
-LIBS += -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpich #-lmpich
+LIBS += -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpi #-lmpich
 INCLUDEPATH += /usr/include/mpich2-x86_64/ /usr/include/mpi/
 
 }

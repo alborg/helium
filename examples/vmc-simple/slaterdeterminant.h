@@ -10,7 +10,7 @@ using namespace std;
 class slaterDeterminant
 {
 public:
-    slaterDeterminant(int nParticles_);
+    slaterDeterminant(int nParticles_, int nDimensions_);
     double beryllium(const mat &r, double &alpha);
 
 private:
@@ -18,6 +18,7 @@ private:
     double psi2s(double r);
 
     int nParticles;
+    int nDimensions;
     double alpha;
 };
 
