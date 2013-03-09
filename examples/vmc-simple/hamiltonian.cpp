@@ -68,16 +68,16 @@ double Hamiltonian::potentialEnergy(const mat &r)
         potentialEnergy -= charge / sqrt(rSingleParticle);
     }
     // Contribution from electron-electron potential (1/rij part)
-//    double r12 = 0;
-//    for(int i = 0; i < nParticles; i++) {
-//        for(int j = i + 1; j < nParticles; j++) {
-//            r12 = 0;
-//            for(int k = 0; k < nDimensions; k++) {
-//                r12 += (r(i,k) - r(j,k)) * (r(i,k) - r(j,k));
-//            }
-//            potentialEnergy += 1 / sqrt(r12);
-//        }
-//    }
+    double r12 = 0;
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = i + 1; j < nParticles; j++) {
+            r12 = 0;
+            for(int k = 0; k < nDimensions; k++) {
+                r12 += (r(i,k) - r(j,k)) * (r(i,k) - r(j,k));
+            }
+            potentialEnergy += 1 / sqrt(r12);
+        }
+    }
 
     return potentialEnergy;
 }

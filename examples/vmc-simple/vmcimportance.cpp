@@ -74,13 +74,14 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     mat energySquareds = zeros(alpha_steps,beta_steps);
 
     int id, np;
-    double eTime,sTime;
 
     //mpd --ncpus=4 &
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
     MPI_Comm_size(MPI_COMM_WORLD, &np);
-    sTime = MPI_Wtime();
+
+    double myTime,mintime, maxtime,avgtime;
+    myTime = MPI_Wtime();
 
     int mpi_steps = nCycles/np;
     idum = idum-id*0.1;
@@ -194,19 +195,19 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Allreduce(pEnergies.memptr(), energies.memptr(), alpha_steps*beta_steps, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
     MPI_Allreduce(pEnergySquareds.memptr(), energySquareds.memptr(), alpha_steps*beta_steps, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-
+    myTime = MPI_Wtime() - myTime;
+    MPI_Reduce(&myTime, &maxtime, 1, MPI_DOUBLE,MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&myTime, &mintime, 1, MPI_DOUBLE, MPI_MIN, 0,MPI_COMM_WORLD);
+    MPI_Reduce(&myTime, &avgtime, 1, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
     MPI_Finalize();
 
-    eTime = MPI_Wtime();
-    double pTime = eTime - sTime;
-
-    if(id == 0) {
+    if (id == 0) {
         cout << energies << endl; //*2*13.6
-        cout << 'Time: ' << pTime <<endl;
         printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
+        avgtime /= np;
+        cout << "Min time: " << mintime << ", max time: " << maxtime << ", avg time: " << avgtime << endl;
     }
 
 
