@@ -22,11 +22,11 @@ VMCImportance::VMCImportance():
     idum(-1),
     nCycles(1000000),
     alpha_min(4),
-    alpha_max(5),
-    alpha_steps(2),
+    alpha_max(4),
+    alpha_steps(1),
     beta_min(0.2),
-    beta_max(0.3),
-    beta_steps(2),
+    beta_max(0.2),
+    beta_steps(1),
     timestep(0.05),
     D(0.5)
 
@@ -64,6 +64,8 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
 
     double alpha_step = (alpha_max - alpha_min)/(alpha_steps-1);
     double beta_step = (beta_max - beta_min)/(beta_steps-1);
+    if(alpha_max == alpha_min)  alpha_step = 1;
+    if(beta_max == beta_min) beta_step = 1;
 
     vec alphas = zeros(alpha_steps);
     vec betas = zeros(beta_steps);
@@ -80,19 +82,16 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &np);
     sTime = MPI_Wtime();
 
-    int mpi_steps = alpha_steps/np;
-    int remainder = alpha_steps%np;
+    int mpi_steps = nCycles/np;
+    idum = idum-id*0.1;
 
     mat pEnergies = zeros(alpha_steps,beta_steps);
     mat pEnergySquareds = zeros(alpha_steps,beta_steps);
     mat qForceOld = zeros(alpha_steps,beta_steps);
     mat qForceNew = zeros(alpha_steps,beta_steps);
 
-    int mpi_start = mpi_steps*id;
-    int mpi_stop = mpi_start + mpi_steps;
-    if (id == np-1) mpi_stop += remainder;
 
-    for (int k=mpi_start; k<mpi_stop; k++) {
+    for (int k=0; k<alpha_steps; k++) {
         alpha = alpha_min + k*alpha_step;
         alphas(k) = alpha;
         for (int l=0; l<beta_steps; l++) {
@@ -111,7 +110,7 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
             qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
 
             // loop over Monte Carlo cycles
-            for(int cycle = 0; cycle < nCycles; cycle++) {
+            for(int cycle = 0; cycle < mpi_steps; cycle++) {
 
                 // New position to test
                 for(int i = 0; i < nParticles; i++) {
@@ -179,7 +178,7 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
             average_dist = average_dist/accepted_steps;
 
             //cout << "Average r12: " << average_dist << endl;
-            cout << "Energy: " << pEnergies(k,l) << endl;
+            //cout << "Energy: " << pEnergies(k,l) << endl;
             cout << "--------------------------" << endl;
 
             energySum = 0;
@@ -202,8 +201,7 @@ void VMCImportance::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Finalize();
 
     eTime = MPI_Wtime();
-    double pTime = fabs(eTime - sTime);
-
+    double pTime = eTime - sTime;
 
     if(id == 0) {
         cout << energies << endl; //*2*13.6
