@@ -1,5 +1,4 @@
 #include "vmcsolver.h"
-#include "vmcimportance.h"
 #include <armadillo>
 
 
