@@ -20,7 +20,7 @@ double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {
     double rs[nParticles];
     alpha = alpha_; //Set class variable alpha
 
-    //Find r for each electron:
+    //Find |r| for each electron:
     double rSingleParticle = 0;
     for(int i = 0; i < nParticles; i++) {
         rSingleParticle = 0;

@@ -20,7 +20,7 @@ VMCSolver::VMCSolver():
     h(0.001),
     h2(1000000),
     idum(-1),
-    nCycles(10000000),
+    nCycles(100000000),
     alpha_min(4),
     alpha_max(4),
     alpha_steps(1),
@@ -76,7 +76,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     int mpi_steps = nCycles/np;
     idum = idum-id*0.1;
 
-    double allEnergies[mpi_steps+1];
+    double* allEnergies = new double[mpi_steps+1];
 
     mat pEnergies = zeros(alpha_steps,beta_steps);
     mat pEnergySquareds = zeros(alpha_steps,beta_steps);
@@ -94,7 +94,9 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
             MCImportance(alpha, beta, mpi_steps, function, hamiltonian, energySum, energySquaredSum, allEnergies);
             //MCSampling(alpha, beta, mpi_steps, function, hamiltonian, energySum, energySquaredSum, allEnergies);
             ostringstream ost;
-            ost << "/mn/korona/rp-s1/alborg/4411/helium/examples/vmc-simple/DATA/data" << id << ".mat" ;
+            //ost << "/mn/korona/rp-s1/alborg/4411/helium/examples/vmc-simple/DATA/data" << id << ".mat" ;
+            ost << "../vmc-simple/DATA/data" << id << ".mat" ;
+
             ofstream blockofile;
             blockofile.open( ost.str( ).c_str( ),ios::out | ios::binary );
             if (blockofile.is_open())
@@ -133,6 +135,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
         avgtime /= np;
         cout << "Min time: " << mintime << ", max time: " << maxtime << ", avg time: " << avgtime << endl;
     }
+
+    delete[] allEnergies;
 }
 
 void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
