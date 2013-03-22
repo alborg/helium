@@ -23,7 +23,6 @@ SOURCES += main.cpp \
     lib.cpp \
     WaveFunction.cpp \
     hamiltonian.cpp \
-    vmcimportance.cpp \
     slaterdeterminant.cpp
 
 HEADERS += \
@@ -31,7 +30,6 @@ HEADERS += \
     lib.h \
     WaveFunction.h \
     hamiltonian.h \
-    vmcimportance.h \
     slaterdeterminant.h
 
 

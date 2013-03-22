@@ -38,7 +38,9 @@ double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
 
 //    //Beryllium
     if(nParticles ==4) {
-        waveFunc = slater->beryllium(r, alpha) * jastrowFactor(r);
+        //waveFunc = slater->beryllium(r, alpha) * jastrowFactor(r);
+        waveFunc = slater->determinant(r, alpha) * jastrowFactor(r);
+
     }
 
      return waveFunc;
