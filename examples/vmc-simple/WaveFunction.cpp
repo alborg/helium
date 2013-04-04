@@ -18,6 +18,13 @@ WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 {
 }
 
+void WaveFunction::buildDeterminant(const mat &r, double alpha) {
+
+    //Build the Slater determinant
+    slater->buildDeterminant(r, alpha);
+
+}
+
 double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
     alpha = alpha_;
     beta = beta_;
@@ -37,11 +44,14 @@ double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
     }
 
 //    //Beryllium
-    if(nParticles ==4) {
-        //waveFunc = slater->beryllium(r, alpha) * jastrowFactor(r);
-        waveFunc = slater->determinant(r, alpha) * jastrowFactor(r);
+   else if(nParticles ==4) {
+        waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r);
+        //waveFunc = slater->getDeterminant(r, alpha);//* jastrowFactor(r);
 
     }
+
+   else slater->buildDeterminant(r, alpha); //* jastrowFactor(r);
+
 
      return waveFunc;
 }

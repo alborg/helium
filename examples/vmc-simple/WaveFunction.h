@@ -14,6 +14,7 @@ public:
 
     WaveFunction(int &nParticles_, int &nDimensions_);
     double waveFunction(const mat &r, double alpha, double beta);
+    void buildDeterminant(const mat &r, double alpha);
 
 private:
 
@@ -24,7 +25,6 @@ private:
     double alpha;
     double beta;
     slaterDeterminant *slater;
-
 
 };
 

@@ -151,8 +151,6 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
     double waveFunctionOld = 0;
     double waveFunctionNew = 0;
 
-
-
     // initial positions
     for(int i = 0; i < nParticles; i++) {
         for(int j = 0; j < nDimensions; j++) {
@@ -160,6 +158,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
         }
     }
 
+    function->buildDeterminant(rOld, alpha);
     waveFunctionOld = function->waveFunction(rOld, alpha, beta);
     qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
 
@@ -243,6 +242,7 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
         }
     }
     rNew = rOld;
+    function->buildDeterminant(rOld, alpha);
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
