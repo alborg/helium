@@ -2,6 +2,7 @@
 #define SLATERDETERMINANT_H
 
 #include <armadillo>
+#include "WaveFunction.h"
 
 
 using namespace arma;
@@ -16,16 +17,13 @@ public:
     double beryllium(const mat &r, double &alpha);
 
 private:
-    double psi1s(double r);
-    double psi2s(double r);
-    double psi2p(double r);
-
 
     int nDimensions;
     int nParticles;
     double alpha;
     mat slaterMatrixUp;
     mat slaterMatrixDown;
+    WaveFunction *function;
 
 };
 

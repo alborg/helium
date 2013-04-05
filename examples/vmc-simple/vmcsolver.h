@@ -20,7 +20,7 @@ private:
     mat quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function);
     double gaussianDeviate(long *idum);
 
-    void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
+    void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const char &file_sigma, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
     int nDimensions;
     int charge;

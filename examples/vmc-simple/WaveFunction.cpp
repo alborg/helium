@@ -33,27 +33,54 @@ double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
 
     //Helium
     if(nParticles==2) {
-        for(int i = 0; i < nParticles; i++) {
-            double rSingleParticle = 0;
-            for(int j = 0; j < nDimensions; j++) {
-                rSingleParticle += r(i,j) * r(i,j);
-            }
-            argument += sqrt(rSingleParticle);
-        }
-        waveFunc = exp(-argument * alpha) * jastrowFactor(r);
+//        for(int i = 0; i < nParticles; i++) {
+//            double rSingleParticle = 0;
+//            for(int j = 0; j < nDimensions; j++) {
+//                rSingleParticle += r(i,j) * r(i,j);
+//            }
+//            argument += sqrt(rSingleParticle);
+//        }
+//        waveFunc = exp(-argument * alpha) * jastrowFactor(r);
+
+        waveFunc = slater->getDeterminant(r, alpha);//* jastrowFactor(r);
     }
 
-//    //Beryllium
+//    Beryllium
    else if(nParticles ==4) {
-        waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r);
-        //waveFunc = slater->getDeterminant(r, alpha);//* jastrowFactor(r);
-
+        //waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r);
+        //cout << waveFunc << endl;
+        waveFunc = slater->getDeterminant(r, alpha);//* jastrowFactor(r);
+        //cout << waveFunc << endl;
+        //cout << "------" << endl;
     }
 
-   else slater->buildDeterminant(r, alpha); //* jastrowFactor(r);
-
+   else waveFunc = slater->getDeterminant(r, alpha); //* jastrowFactor(r);
+   // cout << waveFunc << endl;
 
      return waveFunc;
+}
+
+
+//Wavefunction, 1s state
+double WaveFunction::psi1s(double r, double alpha) {
+
+    return exp(-alpha*r);
+
+}
+
+
+//Wavefunction, 2s state
+double WaveFunction::psi2s(double r, double alpha) {
+
+    return (1-(alpha*r)/2)*exp(-alpha*r/2);
+
+}
+
+//Wavefunction, 2p state
+double WaveFunction::psi2p(double r, double alpha) {
+
+    return alpha*r*exp(-alpha*r/2);
+
 }
 
 

@@ -2,6 +2,7 @@
 #include "lib.h"
 #include "WaveFunction.h"
 #include "hamiltonian.h"
+#include "slaterdeterminant.h"
 
 
 #include <armadillo>
@@ -21,8 +22,8 @@ VMCSolver::VMCSolver():
     h2(1000000),
     idum(-1),
     nCycles(100000),
-    alpha_min(4),
-    alpha_max(4),
+    alpha_min(10),
+    alpha_max(10),
     alpha_steps(1),
     beta_min(0.2),
     beta_max(0.2),
@@ -37,13 +38,16 @@ VMCSolver::VMCSolver():
 
 void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 {
+    bool printToFile = false;
 
     char file_energies[] = "../../../output/energy.txt";
     char file_energySquareds[] = "../../../output/squareds.txt";
     char file_alpha[] = "../../../output/alpha_beta.txt";
+    char file_sigma[] = "../../../output/sigma.txt";
 
-    WaveFunction *function = new WaveFunction(nParticles, nDimensions);
+    //WaveFunction *function = new WaveFunction(nParticles, nDimensions);
     Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
+    slaterDeterminant *slater = new slaterDeterminant(nParticles, nDimensions);
 
     double energySum = 0;
     double energySquaredSum = 0;
@@ -91,20 +95,23 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            MCImportance(alpha, beta, mpi_steps, function, hamiltonian, energySum, energySquaredSum, allEnergies);
-            //MCSampling(alpha, beta, mpi_steps, function, hamiltonian, energySum, energySquaredSum, allEnergies);
-            ostringstream ost;
-            //ost << "/mn/korona/rp-s1/alborg/4411/helium/examples/vmc-simple/DATA/data" << id << ".mat" ;
-            ost << "../vmc-simple/DATA/data" << id << ".mat" ;
+            MCImportance(alpha, beta, mpi_steps, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            //MCSampling(alpha, beta, mpi_steps, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
 
-            ofstream blockofile;
-            blockofile.open( ost.str( ).c_str( ),ios::out | ios::binary );
-            if (blockofile.is_open())
-            {
-                blockofile.write((char*)(allEnergies+1) , mpi_steps*sizeof(double)) ;
-                blockofile.close();
+            if(printToFile) {
+                ostringstream ost;
+                //ost << "/mn/korona/rp-s1/alborg/4411/helium/examples/vmc-simple/DATA/data" << id << ".mat" ;
+                ost << "../vmc-simple/DATA/data" << id << ".mat" ;
+
+                ofstream blockofile;
+                blockofile.open( ost.str( ).c_str( ),ios::out | ios::binary );
+                if (blockofile.is_open())
+                {
+                    blockofile.write((char*)(allEnergies+1) , mpi_steps*sizeof(double)) ;
+                    blockofile.close();
+                }
+                else cout << "Unable to open data file for process " << id << endl;
             }
-            else cout << "Unable to open data file for process " << id << endl;
 
             pEnergies(k,l) = energySum/(nCycles * nParticles);
             pEnergySquareds(k,l) = energySquaredSum/(nCycles * nParticles);
@@ -130,8 +137,9 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Finalize();
 
     if (id == 0) {
-        cout << energies << endl; //*2*13.6
-        printFile(*file_energies, *file_energySquareds, *file_alpha, energies, energySquareds, alphas, betas);
+        cout << "Energies: " << energies << endl; //*2*13.6
+        cout << "Energy squareds: " << energySquareds << endl; //*2*13.6*2*13.6
+        printFile(*file_energies, *file_energySquareds, *file_alpha, *file_sigma, energies, energySquareds, alphas, betas);
         avgtime /= np;
         cout << "Min time: " << mintime << ", max time: " << maxtime << ", avg time: " << avgtime << endl;
     }
@@ -139,14 +147,14 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     delete[] allEnergies;
 }
 
-void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
+void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
 
     mat qForceOld = zeros(alpha_steps,beta_steps);
     mat qForceNew = zeros(alpha_steps,beta_steps);
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
-    int accepted_steps = 0;
-    int count_total = 0;
+    double accepted_steps = 0;
+    double count_total = 0;
     double deltaE = 0;
     double waveFunctionOld = 0;
     double waveFunctionNew = 0;
@@ -158,16 +166,19 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
         }
     }
 
-    function->buildDeterminant(rOld, alpha);
+    slater->buildDeterminant(rOld, alpha);
     waveFunctionOld = function->waveFunction(rOld, alpha, beta);
-    qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
+    //qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
+    qForceOld = quantumForce(rOld, alpha, beta);
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
 
-        // New position to test
-        for(int i = 0; i < nParticles; i++) {
+
+        for(int i = 0; i < nParticles; i++) { //Particle
+
             for(int j = 0; j < nDimensions; j++) {
+                // New position to test
                 rNew(i,j) = rOld(i,j) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(i,j)*timestep*D;
             }
 
@@ -181,6 +192,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
             }
 
             // Recalculate the wave function
+
             waveFunctionNew = function->waveFunction(rNew, alpha, beta);
             qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
 
@@ -217,13 +229,43 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
             energySquaredSum += deltaE*deltaE;
             allEnergies[cycle] = deltaE;
 
-        } //End new position loop
+        } //End particle loop
 
     } //End Monte Carlo loop
 
-    cout << "accepted steps, total steps: " << accepted_steps << " " << count_total << endl;
+    cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
 
 }
+
+
+mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function) {
+
+    mat qforce = zeros(nParticles, nDimensions);
+    mat rPlus = zeros<mat>(nParticles, nDimensions);
+    mat rMinus = zeros<mat>(nParticles, nDimensions);
+
+    rPlus = rMinus = r;
+
+    double waveFunctionMinus = 0;
+    double waveFunctionPlus = 0;
+
+    //First derivative, divided by the wf
+
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = 0; j < nDimensions; j++) {
+            rPlus(i,j) = r(i,j)+h;
+            rMinus(i,j) = r(i,j)-h;
+            waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
+            waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
+            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
+            rPlus(i,j) = r(i,j);
+            rMinus(i,j) = r(i,j);
+        }
+    }
+
+    return qforce;
+}
+
 
 void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
 
@@ -242,7 +284,7 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
         }
     }
     rNew = rOld;
-    function->buildDeterminant(rOld, alpha);
+
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
@@ -257,6 +299,7 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
             }
 
             // Recalculate the value of the wave function
+
             waveFunctionNew = function->waveFunction(rNew, alpha, beta);
             ++count_total;
 
@@ -287,33 +330,7 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
 }
 
 
-mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function) {
 
-    mat qforce = zeros(nParticles, nDimensions);
-    mat rPlus = zeros<mat>(nParticles, nDimensions);
-    mat rMinus = zeros<mat>(nParticles, nDimensions);
-
-    rPlus = rMinus = r;
-
-    double waveFunctionMinus = 0;
-    double waveFunctionPlus = 0;
-
-    //First derivative
-
-    for(int i = 0; i < nParticles; i++) {
-        for(int j = 0; j < nDimensions; j++) {
-            rPlus(i,j) = r(i,j)+h;
-            rMinus(i,j) = r(i,j)-h;
-            waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
-            waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
-            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
-            rPlus(i,j) = r(i,j);
-            rMinus(i,j) = r(i,j);
-        }
-    }
-
-    return qforce;
-}
 
 double VMCSolver::gaussianDeviate(long *idum) {
 
@@ -342,7 +359,7 @@ double VMCSolver::gaussianDeviate(long *idum) {
 
 
 
-void VMCSolver::printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
+void VMCSolver::printFile(const char &file_energies, const char &file_energySquareds, const char &file_sigma, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
 {
 
     ofstream myfile(&file_energies);
@@ -351,7 +368,7 @@ void VMCSolver::printFile(const char &file_energies, const char &file_energySqua
         for (unsigned int f=0; f<energies.n_rows; f++)
         {
             for (unsigned int l=0; l<energies.n_cols; l++) {
-                myfile << energies(f,l)*2*13.6 << " ";
+                myfile << energies(f,l) << " ";
             }
             myfile << endl;
         }
@@ -378,7 +395,7 @@ void VMCSolver::printFile(const char &file_energies, const char &file_energySqua
         for (unsigned int f=0; f<energiesSquared.n_rows; f++)
         {
             for (unsigned int l=0; l<energiesSquared.n_cols; l++) {
-                myfile3 << energiesSquared(f,l)*2*13.6 << " ";
+                myfile3 << energiesSquared(f,l) << " ";
             }
             myfile3 << endl;
         }
@@ -387,6 +404,21 @@ void VMCSolver::printFile(const char &file_energies, const char &file_energySqua
     }
     else cout << "Unable to open file" << endl;
 
+
+    ofstream myfile4(&file_sigma);
+    if (myfile4.is_open())
+    {
+        for (unsigned int f=0; f<energiesSquared.n_rows; f++)
+        {
+            for (unsigned int l=0; l<energiesSquared.n_cols; l++) {
+                myfile4 << sqrt(energiesSquared(f,l) - energies(f,l)*energies(f,l))<< " ";
+            }
+            myfile4 << endl;
+        }
+
+        myfile4.close();
+    }
+    else cout << "Unable to open file" << endl;
 
 }
 
