@@ -210,14 +210,14 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
             // Check for step acceptance (if yes, update position, if no, reset position)
             //if(ran2(&idum) <= greensFunction * (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
 
-            double ratio = slater->getRatioDeterminant(i,rNew);
+            double ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
 
             if(ran2(&idum) <= ratio) {
                 ++accepted_steps;
                 for(int j = 0; j < nDimensions; j++) {
                     rOld(i,j) = rNew(i,j);
                     //qForceOld(i,j) = qForceNew(i,j);
-                    slater->updateDeterminant(rNew, i, alpha, beta);
+                    slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
                     waveFunctionOld = slater->getDeterminant();
                     qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
 
@@ -259,28 +259,6 @@ mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf
 
         }
     }
-
-//    mat rPlus = zeros<mat>(nParticles, nDimensions);
-//    mat rMinus = zeros<mat>(nParticles, nDimensions);
-
-//    rPlus = rMinus = r;
-
-//    double waveFunctionMinus = 0;
-//    double waveFunctionPlus = 0;
-
-//    //First derivative, divided by the wf
-
-//    for(int i = 0; i < nParticles; i++) {
-//        for(int j = 0; j < nDimensions; j++) {
-//            rPlus(i,j) = r(i,j)+h;
-//            rMinus(i,j) = r(i,j)-h;
-//            waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
-//            waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
-//            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
-//            rPlus(i,j) = r(i,j);
-//            rMinus(i,j) = r(i,j);
-//        }
-//    }
 
     return qforce;
 }

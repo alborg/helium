@@ -13,8 +13,10 @@ class slaterDeterminant
 public:
     slaterDeterminant(int nParticles_, int nDimensions_);
     void buildDeterminant(const mat &r, double &alpha_, double &beta_);
+    double getRatioDeterminant(int i, const mat &r, double alpha, double beta);
     double getDeterminant();
-    void updateDeterminant(const mat &r, int i, double &alpha_, double &beta_);
+    vec getStates(mat &r, int i, double rtot, double alpha, double beta);
+    void updateDeterminant(const mat &rNew, const mat &rOld, int i, double &alpha_, double &beta_, double ratio);
     double beryllium(const mat &r, double &alpha);
 
 private:
@@ -25,8 +27,6 @@ private:
     double alpha;
     mat slaterMatrixUp;
     mat slaterMatrixDown;
-    mat slaterMatrixUpNew;
-    mat slaterMatrixDownNew;
     mat invSlaterMatrixUp;
     mat invSlaterMatrixDown;
 
