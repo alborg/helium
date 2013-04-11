@@ -1,6 +1,5 @@
 #include "WaveFunction.h"
 #include "lib.h"
-#include "slaterdeterminant.h"
 
 #include <armadillo>
 
@@ -8,53 +7,15 @@
 using namespace arma;
 using namespace std;
 
-WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_, slaterDeterminant *slater_) :
+WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 
     nDimensions(nDimensions_),
-    nParticles(nParticles_),
-    slater(slater_)
+    nParticles(nParticles_)
 
 
 {
 }
 
-
-double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
-    alpha = alpha_;
-    beta = beta_;
-    double argument = 0;
-    double waveFunc = 0;
-
-    slater->buildDeterminant(r,alpha);
-
-    //Helium
-    if(nParticles==2) {
-//        for(int i = 0; i < nParticles; i++) {
-//            double rSingleParticle = 0;
-//            for(int j = 0; j < nDimensions; j++) {
-//                rSingleParticle += r(i,j) * r(i,j);
-//            }
-//            argument += sqrt(rSingleParticle);
-//        }
-//        waveFunc = exp(-argument * alpha) * jastrowFactor(r, beta_);
-
-        waveFunc = slater->getDeterminant();
-    }
-
-//    Beryllium
-   else if(nParticles ==4) {
-        //waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r, beta_);
-        //cout << waveFunc << endl;
-        waveFunc = slater->getDeterminant();
-        //cout << waveFunc << endl;
-        //cout << "------" << endl;
-    }
-
-   else waveFunc = slater->getDeterminant();
-   // cout << waveFunc << endl;
-
-     return waveFunc;
-}
 
 
 double WaveFunction::gradientWaveFunction(const mat &r, int particle, int dimension, double alpha, double beta) {
@@ -130,7 +91,7 @@ double WaveFunction::psi2p(double r, double alpha) {
 //First derivative of wavefunction, 2p state
 double WaveFunction::dPsi2p(double rtot, double variable, double alpha) {
 
-    return (alpha*variable/r)*(1-rtot/2)*exp(-alpha*rtot/2);
+    return (alpha*variable/rtot)*(1-rtot/2)*exp(-alpha*rtot/2);
 
 }
 

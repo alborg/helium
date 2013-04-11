@@ -15,7 +15,7 @@ public:
     void buildDeterminant(const mat &r, double &alpha_, double &beta_);
     double getRatioDeterminant(int i, const mat &r, double alpha, double beta);
     double getDeterminant();
-    vec getStates(mat &r, int i, double rtot, double alpha, double beta);
+    vec getStates(const mat &r, int i, double rtot, double alpha, double beta);
     void updateDeterminant(const mat &rNew, const mat &rOld, int i, double &alpha_, double &beta_, double ratio);
     double beryllium(const mat &r, double &alpha);
 

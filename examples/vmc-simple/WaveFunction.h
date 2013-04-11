@@ -2,7 +2,6 @@
 #define WAVEFUNCTION_H
 
 #include <armadillo>
-#include "slaterdeterminant.h"
 
 using namespace arma;
 using namespace std;
@@ -12,7 +11,7 @@ class WaveFunction {
 
 public:
 
-    WaveFunction(int &nParticles_, int &nDimensions_, slaterDeterminant *slater_);
+    WaveFunction(int &nParticles_, int &nDimensions_);
 
     double waveFunction(const mat &r, double alpha, double beta);
     double gradientWaveFunction(const mat &r, int particle, int dimension, double alpha, double beta);
@@ -31,7 +30,6 @@ private:
     int nParticles;
     double alpha;
     double beta;
-    slaterDeterminant *slater;
 
 };
 

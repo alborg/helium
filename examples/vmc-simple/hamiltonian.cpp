@@ -33,23 +33,23 @@ double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const doubl
     double waveFunctionMinus = 0;
     double waveFunctionPlus = 0;
 
-    double waveFunctionCurrent = function->waveFunction(r, alpha, beta); //Find wavefunction for r
+    //double waveFunctionCurrent = function->waveFunction(r, alpha, beta); //Find wavefunction for r
 
     //Second derivative (del^2):
 
     double kineticEnergy = 0;
-    for(int i = 0; i < nParticles; i++) {
-        for(int j = 0; j < nDimensions; j++) {
-            rPlus(i,j) += h;
-            rMinus(i,j) -= h;
-            waveFunctionMinus = function->waveFunction(rMinus, alpha, beta);
-            waveFunctionPlus = function->waveFunction(rPlus, alpha, beta);
-            kineticEnergy -= (waveFunctionMinus + waveFunctionPlus - 2 * waveFunctionCurrent);
-            rPlus(i,j) = r(i,j);
-            rMinus(i,j) = r(i,j);
-        }
-    }
-    kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
+//    for(int i = 0; i < nParticles; i++) {
+//        for(int j = 0; j < nDimensions; j++) {
+//            rPlus(i,j) += h;
+//            rMinus(i,j) -= h;
+//            waveFunctionMinus = function->waveFunction(rMinus, alpha, beta);
+//            waveFunctionPlus = function->waveFunction(rPlus, alpha, beta);
+//            kineticEnergy -= (waveFunctionMinus + waveFunctionPlus - 2 * waveFunctionCurrent);
+//            rPlus(i,j) = r(i,j);
+//            rMinus(i,j) = r(i,j);
+//        }
+//    }
+//    kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
 
     return kineticEnergy;
 }

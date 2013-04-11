@@ -4,6 +4,7 @@
 #include <armadillo>
 #include "WaveFunction.h"
 #include "hamiltonian.h"
+#include "slaterdeterminant.h"
 
 using namespace arma;
 using namespace std;

@@ -46,7 +46,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     char file_sigma[] = "../../../output/sigma.txt";
 
     slaterDeterminant *slater = new slaterDeterminant(nParticles, nDimensions);
-    WaveFunction *function = new WaveFunction(nParticles, nDimensions, slater);
+    WaveFunction *function = new WaveFunction(nParticles, nDimensions);
     Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
 
     double energySum = 0;
@@ -262,70 +262,6 @@ mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf
 
     return qforce;
 }
-
-
-void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
-
-    rOld = zeros<mat>(nParticles, nDimensions);
-    rNew = zeros<mat>(nParticles, nDimensions);
-    int accepted_steps = 0;
-    int count_total = 0;
-    double deltaE = 0;
-    double waveFunctionOld = 0;
-    double waveFunctionNew = 0;
-
-    // initial trial positions
-    for(int i = 0; i < nParticles; i++) {
-        for(int j = 0; j < nDimensions; j++) {
-            rOld(i,j) = stepLength * (ran2(&idum) - 0.5);
-        }
-    }
-    rNew = rOld;
-
-
-    // loop over Monte Carlo cycles
-    for(int cycle = 0; cycle < mpi_steps; cycle++) {
-
-        // Store the current value of the wave function
-        waveFunctionOld = function->waveFunction(rOld, alpha, beta);
-
-        // New position to test
-        for(int i = 0; i < nParticles; i++) {
-            for(int j = 0; j < nDimensions; j++) {
-                rNew(i,j) = rOld(i,j) + stepLength*(ran2(&idum) - 0.5);
-            }
-
-            // Recalculate the value of the wave function
-
-            waveFunctionNew = function->waveFunction(rNew, alpha, beta);
-            ++count_total;
-
-            // Check for step acceptance (if yes, update position, if no, reset position)
-            if(ran2(&idum) <= (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
-                ++accepted_steps;
-                for(int j = 0; j < nDimensions; j++) {
-                    rOld(i,j) = rNew(i,j);
-                    waveFunctionOld = waveFunctionNew;
-                    rowvec r12 = rOld.row(1) - rOld.row(0);
-                    //average_dist += norm(r12, 2);
-                }
-            } else {
-                for(int j = 0; j < nDimensions; j++) {
-                    rNew(i,j) = rOld(i,j);
-                }
-            }
-            // update energies
-            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
-            //deltaE = hamiltonian->analyticLocalEnergy(rNew, alpha, beta);
-            energySum += deltaE;
-            energySquaredSum += deltaE*deltaE;
-            allEnergies[cycle] = deltaE;
-
-        }
-
-    }
-}
-
 
 
 

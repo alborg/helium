@@ -13,8 +13,6 @@ slaterDeterminant::slaterDeterminant(int nParticles_, int nDimensions_):
     nParticles(nParticles_),
     slaterMatrixUp(zeros(nParticles/2,nParticles/2)),
     slaterMatrixDown(zeros(nParticles/2,nParticles/2)),
-    slaterMatrixUpNew(zeros(nParticles/2,nParticles/2)),
-    slaterMatrixDownNew(zeros(nParticles/2,nParticles/2)),
     invSlaterMatrixUp(zeros(nParticles/2,nParticles/2)),
     invSlaterMatrixDown(zeros(nParticles/2,nParticles/2)),
     function(new WaveFunction(nParticles,nDimensions))
@@ -66,8 +64,8 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
     }
 
 
-    invSlaterMatrixUp = slaterMatrixUp.i( slow=false );
-    invSlaterMatrixDown = slaterMatrixDown.i( slow=false );
+    invSlaterMatrixUp = inv(slaterMatrixUp);
+    invSlaterMatrixDown = inv(slaterMatrixDown);
 }
 
 
@@ -109,21 +107,21 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
     for (int k=0; k<nParticles/2; k++) { //Particles (rows), inv matrix
         if(k == particle) {
             if(i<nParticles/2) { invSlaterMatrixUp(k,particle) = (1/ratio)*invSlaterMatrixUp(k,particle); }
-            else {invSlaterMatrixDown(k,particle) = (1/ratio)*invSlaterMatrixDown(k,particle);
-            }
-            else {
-                for(int j=0; j<nParticles/2; j++) { //States (cols), inv matrix
-                    if(i<nParticles/2) {
-                        invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSj(k)/ratio)*invSlaterMatrixUp(k,particle);
-                    }
-                    else {
-                        invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSj(k)/ratio)*invSlaterMatrixDown(k,particle);
+            else {invSlaterMatrixDown(k,particle) = (1/ratio)*invSlaterMatrixDown(k,particle); }
+        }
+        else {
+            for(int j=0; j<nParticles/2; j++) { //States (cols), inv matrix
+                if(i<nParticles/2) {
+                    invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSj(k)/ratio)*invSlaterMatrixUp(k,particle);
+                }
+                else {
+                    invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSj(k)/ratio)*invSlaterMatrixDown(k,particle);
 
-                    }
                 }
             }
         }
     }
+
 
 
 }
@@ -152,7 +150,7 @@ double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha,
 }
 
 
-vec slaterDeterminant::getStates(mat &r, int i, double rtot, double alpha, double beta) {
+vec slaterDeterminant::getStates(const mat &r, int i, double rtot, double alpha, double beta) {
 
     vec updatedStates = zeros<vec>(nParticles/2,1);
     updatedStates(0) = function->psi1s(rtot, alpha); //n=1,l=0,ml=0
