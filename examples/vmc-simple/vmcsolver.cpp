@@ -166,7 +166,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
         }
     }
 
-    slater->buildDeterminant(rOld, alpha);
+    slater->buildDeterminant(rOld, alpha, beta);
     //waveFunctionOld = function->waveFunction(rOld, alpha, beta);
     waveFunctionOld = slater->getDeterminant();
     qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
@@ -195,32 +195,39 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
             //waveFunctionNew = function->waveFunction(rNew, alpha, beta);
 
-            waveFunctionNew = slater->getNewDeterminant(i, rNew);
 
-            qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
+            //qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
 
             //Greens function
-            double greensFunction = 0;
-            for(int j=0; j<nDimensions; j++) {
-                greensFunction += 0.5*(qForceOld(i,j) + qForceNew(i,j)) * (0.5*D*timestep*(qForceOld(i,j) - qForceNew(i,j)) - rNew(i,j) + rOld(i,j));
-            }
-            greensFunction = exp(greensFunction);
+            //double greensFunction = 0;
+            //for(int j=0; j<nDimensions; j++) {
+            //    greensFunction += 0.5*(qForceOld(i,j) + qForceNew(i,j)) * (0.5*D*timestep*(qForceOld(i,j) - qForceNew(i,j)) - rNew(i,j) + rOld(i,j));
+            //}
+            //greensFunction = exp(greensFunction);
 
             ++count_total;
 
             // Check for step acceptance (if yes, update position, if no, reset position)
-            if(ran2(&idum) <= greensFunction * (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
+            //if(ran2(&idum) <= greensFunction * (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
+
+            double ratio = slater->getRatioDeterminant(i,rNew);
+
+            if(ran2(&idum) <= ratio) {
                 ++accepted_steps;
                 for(int j = 0; j < nDimensions; j++) {
                     rOld(i,j) = rNew(i,j);
-                    qForceOld(i,j) = qForceNew(i,j);
+                    //qForceOld(i,j) = qForceNew(i,j);
+                    slater->updateDeterminant(rNew, i, alpha, beta);
+                    waveFunctionOld = slater->getDeterminant();
+                    qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
+
                 }
                 waveFunctionOld = waveFunctionNew;
             }
             else {
                 for(int j = 0; j < nDimensions; j++) {
                     rNew(i,j) = rOld(i,j);
-                    qForceNew(i,j) = qForceOld(i,j);
+                    //qForceNew(i,j) = qForceOld(i,j);
                 }
             }
 

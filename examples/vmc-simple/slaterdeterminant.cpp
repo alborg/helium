@@ -23,7 +23,7 @@ slaterDeterminant::slaterDeterminant(int nParticles_, int nDimensions_):
 }
 
 
-void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_) {
+void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &beta_) {
 
     vec rs = zeros<vec>(nParticles,1);
     alpha = alpha_; //Set class variable alpha
@@ -44,33 +44,23 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_) {
         for(int k=0; k<nParticles/2; k++) { //Cols: Particle (position)
             if (i == 0) { //n=1,l=0,ml=0
                 slaterMatrixUp(i,k) = function->psi1s(rs[k], alpha);
-                slaterMatrixUpNew(i,k) = function->psi1s(rs[k], alpha);
                 slaterMatrixDown(i,k) = function->psi1s(rs[nParticles/2+k], alpha);
-                slaterMatrixDownNew(i,k) = function->psi1s(rs[nParticles/2+k], alpha);
             }
             if (i == 1) {//n=2,l=0,ml=0
                 slaterMatrixUp(i,k) = function->psi2s(rs[k], alpha);
                 slaterMatrixDown(i,k) = function->psi2s(rs[nParticles/2+k], alpha);
-                slaterMatrixUpNew(i,k) = function->psi2s(rs[k], alpha);
-                slaterMatrixDownNew(i,k) = function->psi2s(rs[nParticles/2+k], alpha);
             }
             if (i == 2) { //n=2,l=1,ml=-1
                 slaterMatrixUp(i,k) = r(k,1)*function->psi2p(rs[k], alpha);
                 slaterMatrixDown(i,k) = r(k,1)*function->psi2p(rs[nParticles/2+k], alpha);
-                slaterMatrixUpNew(i,k) = r(k,1)*function->psi2p(rs[k], alpha);
-                slaterMatrixDownNew(i,k) = r(k,1)*function->psi2p(rs[nParticles/2+k], alpha);
             }
             if (i == 3) { //n=2,l=1,ml=0
                 slaterMatrixUp(i,k) = r(k,0)*function->psi2p(rs[k], alpha);
                 slaterMatrixDown(i,k) = r(k,0)*function->psi2p(rs[nParticles/2+k], alpha);
-                slaterMatrixUpNew(i,k) = r(k,0)*function->psi2p(rs[k], alpha);
-                slaterMatrixDownNew(i,k) = r(k,0)*function->psi2p(rs[nParticles/2+k], alpha);
             }
             if (i == 4) { //n=2,l=1,ml=1
                 slaterMatrixUp(i,k) = r(k,2)*function->psi2p(rs[k], alpha);
                 slaterMatrixDown(i,k) = r(k,2)*function->psi2p(rs[nParticles/2+k], alpha);
-                slaterMatrixUpNew(i,k) = r(k,2)*function->psi2p(rs[k], alpha);
-                slaterMatrixDownNew(i,k) = r(k,2)*function->psi2p(rs[nParticles/2+k], alpha);
             }
             invSlaterMatrixUp(i,k) = 1/slaterMatrixUp(i,k);
             invSlaterMatrixDown(i,k) = 1/slaterMatrixDown(i,k);
@@ -88,8 +78,25 @@ double slaterDeterminant::getDeterminant() {
 
 }
 
-double slaterDeterminant::getNewDeterminant(int i, const double &r) {
+void slaterDeterminant::updateDeterminant(const mat &r, int i, double &alpha_, double &beta_) {
 
+    for (int g=0; g<nParticles; g++) {
+        if(g != i) {
+            for(int j=0; j<nDimensions; j++) {
+
+
+
+            }
+        }
+    }
+
+
+}
+
+
+double slaterDeterminant::getRatioDeterminant(int i, const double &r) {
+
+    vec updatedStates = zeros<vec>(nParticles/2,1);
 
     double rSingleParticle;
     //Get rtot for particle's new position:
@@ -98,49 +105,20 @@ double slaterDeterminant::getNewDeterminant(int i, const double &r) {
     }
     double rtot = sqrt(rSingleParticle);
 
-    double trans = nParticles/2;
+    updatedStates(0) = function->psi1s(rtot, alpha); //n=1,l=0,ml=0
+    if(i>0) updatedStates(1) = function->psi2s(rtot, alpha); //n=2,l=0,ml=0
+    if(i>1) updatedStates(2) = r(i,1)*function->psi2p(rtot, alpha); //n=2,l=1,ml=-1
+    if(i>2) updatedStates(3) = r(i,0)*function->psi2p(rtot, alpha); //n=2,l=1,ml=0
+    if(i>3) updatedStates(4) = r(i,2)*function->psi2p(rtot, alpha); //n=2,l=1,ml=1
 
-    for(int k=0; k<nParticles/2; k++) { //Cols: Particle (position)
-        if(i<trans) {
-
-            if (i == 0) { //n=1,l=0,ml=0
-                slaterMatrixUpNew(i,k) = function->psi1s(rtot, alpha);
-            }
-            if (i == 1) {//n=2,l=0,ml=0
-                slaterMatrixUpNew(i,k) = function->psi2s(rtot, alpha);
-            }
-            if (i == 2) { //n=2,l=1,ml=-1
-                slaterMatrixUpNew(i,k) = r(k,1)*function->psi2p(rtot, alpha);
-            }
-            if (i == 3) { //n=2,l=1,ml=0
-                slaterMatrixUpNew(i,k) = r(k,0)*function->psi2p(rtot, alpha);
-            }
-            if (i == 4) { //n=2,l=1,ml=1
-                slaterMatrixUpNew(i,k) = r(k,2)*function->psi2p(rtot, alpha);
-            }
-        }
-        else {
-            if (i == nParticles/2) { //n=1,l=0,ml=0
-                slaterMatrixDownNew(i,k) = function->psi1s(rtot, alpha);
-            }
-            if (i == nParticles/2+1) {//n=2,l=0,ml=0
-                slaterMatrixDownNew(i,k) = function->psi2s(rtot, alpha);
-            }
-            if (i == nParticles/2+2) { //n=2,l=1,ml=-1
-                slaterMatrixDownNew(i,k) = r(k,1)*function->psi2p(rtot, alpha);
-            }
-            if (i == nParticles/2+3) { //n=2,l=1,ml=0
-                slaterMatrixDownNew(i,k) = r(k,0)*function->psi2p(rtot, alpha);
-            }
-            if (i == nParticles/2+4) { //n=2,l=1,ml=1
-                slaterMatrixDownNew(i,k) = r(k,2)*function->psi2p(rtot, alpha);
-            }
-        }
+    for(int g=0; g<nParticles/2; g++) {
+        if(i<nParticles/2) { updatedStates(g) *= invSlaterMatrixUp(i,g); }
+        else { updatedStates(g) *= invSlaterMatrixDown(i,g); }
     }
 
-    return det(slaterMatrixUpNew)*det(slaterMatrixDownNew);
-
+    return sum(updatedStates);
 }
+
 
 
 double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {

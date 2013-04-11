@@ -12,8 +12,9 @@ class slaterDeterminant
 {
 public:
     slaterDeterminant(int nParticles_, int nDimensions_);
-    void buildDeterminant(const mat &r, double &alpha_);
+    void buildDeterminant(const mat &r, double &alpha_, double &beta_);
     double getDeterminant();
+    void updateDeterminant(const mat &r, int i, double &alpha_, double &beta_);
     double beryllium(const mat &r, double &alpha);
 
 private:
