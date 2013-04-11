@@ -8,28 +8,24 @@
 using namespace arma;
 using namespace std;
 
-WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
+WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_, slaterDeterminant *slater_) :
 
     nDimensions(nDimensions_),
     nParticles(nParticles_),
-    slater(new slaterDeterminant(nParticles,nDimensions))
+    slater(slater_)
 
 
 {
 }
 
-void WaveFunction::buildDeterminant(const mat &r, double alpha) {
-
-    //Build the Slater determinant
-    slater->buildDeterminant(r, alpha);
-
-}
 
 double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
     alpha = alpha_;
     beta = beta_;
     double argument = 0;
     double waveFunc = 0;
+
+    slater->buildDeterminant(r,alpha);
 
     //Helium
     if(nParticles==2) {
@@ -40,24 +36,56 @@ double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
 //            }
 //            argument += sqrt(rSingleParticle);
 //        }
-//        waveFunc = exp(-argument * alpha) * jastrowFactor(r);
+//        waveFunc = exp(-argument * alpha) * jastrowFactor(r, beta_);
 
-        waveFunc = slater->getDeterminant(r, alpha);//* jastrowFactor(r);
+        waveFunc = slater->getDeterminant();
     }
 
 //    Beryllium
    else if(nParticles ==4) {
-        //waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r);
+        //waveFunc = slater->beryllium(r, alpha); //* jastrowFactor(r, beta_);
         //cout << waveFunc << endl;
-        waveFunc = slater->getDeterminant(r, alpha);//* jastrowFactor(r);
+        waveFunc = slater->getDeterminant();
         //cout << waveFunc << endl;
         //cout << "------" << endl;
     }
 
-   else waveFunc = slater->getDeterminant(r, alpha); //* jastrowFactor(r);
+   else waveFunc = slater->getDeterminant();
    // cout << waveFunc << endl;
 
      return waveFunc;
+}
+
+
+double WaveFunction::gradientWaveFunction(const mat &r, int particle, int dimension, double alpha, double beta) {
+
+    double variable = r(particle,dimension);
+    double rtot = 0;
+    double derivate = 0;
+
+    for (int j=0; j<nDimensions; j++) { rtot += r(particle,j)*r(particle,j); }
+
+    if(particle == 0 || particle == nParticles/2) {
+        derivate = dPsi1s(rtot, variable, alpha); //n=1,l=0,ml=0
+    }
+    if(particle == 1 || particle == 1+nParticles/2) {
+        derivate = dPsi2s(rtot, variable, alpha);//n=2,l=0,ml=0
+    }
+    if(particle == 2 || particle == 2+nParticles/2) {
+        derivate = r(particle,1)*dPsi2p(rtot, variable, alpha);//n=2,l=1,ml=-1
+        if(dimension == 1) derivate += psi2p(rtot, alpha);
+    }
+    if(particle == 3 || particle == 3+nParticles/2) {
+        derivate = r(particle,0)*dPsi2p(rtot, variable, alpha);//n=2,l=1,ml=0
+        if(dimension == 0) derivate += psi2p(rtot, alpha);
+    }
+    if(particle == 4 || particle == 4+nParticles/2) {
+        derivate = r(particle,2)*dPsi2p(rtot, variable, alpha);//n=2,l=1,ml=1
+        if(dimension == 2) derivate += psi2p(rtot, alpha);
+    }
+
+    return derivate;
+
 }
 
 
@@ -68,11 +96,26 @@ double WaveFunction::psi1s(double r, double alpha) {
 
 }
 
+//First derivative of wavefunction, 1s state
+double WaveFunction::dPsi1s(double rtot, double variable, double alpha) {
+
+   return -(alpha*variable/rtot)*exp(-alpha*rtot);
+
+}
+
+
 
 //Wavefunction, 2s state
 double WaveFunction::psi2s(double r, double alpha) {
 
     return (1-(alpha*r)/2)*exp(-alpha*r/2);
+
+}
+
+//First derivative of wavefunction, 2s state
+double WaveFunction::dPsi2s(double rtot, double variable, double alpha) {
+
+    return (alpha*variable/rtot)*(alpha*rtot/4 - 1)*exp(-alpha*rtot/2);
 
 }
 
@@ -84,7 +127,14 @@ double WaveFunction::psi2p(double r, double alpha) {
 }
 
 
-double WaveFunction::jastrowFactor(const mat &r) {
+//First derivative of wavefunction, 2p state
+double WaveFunction::dPsi2p(double rtot, double variable, double alpha) {
+
+    return (alpha*variable/r)*(1-rtot/2)*exp(-alpha*rtot/2);
+
+}
+
+double WaveFunction::jastrowFactor(const mat &r, double beta) {
 
     rowvec r12;
     double r12norm = 0;

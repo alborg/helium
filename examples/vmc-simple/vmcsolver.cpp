@@ -45,9 +45,9 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     char file_alpha[] = "../../../output/alpha_beta.txt";
     char file_sigma[] = "../../../output/sigma.txt";
 
-    //WaveFunction *function = new WaveFunction(nParticles, nDimensions);
-    Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
     slaterDeterminant *slater = new slaterDeterminant(nParticles, nDimensions);
+    WaveFunction *function = new WaveFunction(nParticles, nDimensions, slater);
+    Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
 
     double energySum = 0;
     double energySquaredSum = 0;
@@ -95,8 +95,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            MCImportance(alpha, beta, mpi_steps, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
-            //MCSampling(alpha, beta, mpi_steps, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
 
             if(printToFile) {
                 ostringstream ost;
@@ -147,7 +147,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     delete[] allEnergies;
 }
 
-void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
+void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
 
     mat qForceOld = zeros(alpha_steps,beta_steps);
     mat qForceNew = zeros(alpha_steps,beta_steps);
@@ -167,9 +167,9 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, slaterDet
     }
 
     slater->buildDeterminant(rOld, alpha);
-    waveFunctionOld = function->waveFunction(rOld, alpha, beta);
-    //qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
-    qForceOld = quantumForce(rOld, alpha, beta);
+    //waveFunctionOld = function->waveFunction(rOld, alpha, beta);
+    waveFunctionOld = slater->getDeterminant();
+    qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
@@ -193,7 +193,10 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, slaterDet
 
             // Recalculate the wave function
 
-            waveFunctionNew = function->waveFunction(rNew, alpha, beta);
+            //waveFunctionNew = function->waveFunction(rNew, alpha, beta);
+
+            waveFunctionNew = slater->getNewDeterminant(i, rNew);
+
             qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
 
             //Greens function
@@ -241,33 +244,42 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, slaterDet
 mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function) {
 
     mat qforce = zeros(nParticles, nDimensions);
-    mat rPlus = zeros<mat>(nParticles, nDimensions);
-    mat rMinus = zeros<mat>(nParticles, nDimensions);
-
-    rPlus = rMinus = r;
-
-    double waveFunctionMinus = 0;
-    double waveFunctionPlus = 0;
-
-    //First derivative, divided by the wf
 
     for(int i = 0; i < nParticles; i++) {
         for(int j = 0; j < nDimensions; j++) {
-            rPlus(i,j) = r(i,j)+h;
-            rMinus(i,j) = r(i,j)-h;
-            waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
-            waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
-            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
-            rPlus(i,j) = r(i,j);
-            rMinus(i,j) = r(i,j);
+
+            qforce(i,j) = function->gradientWaveFunction(r, i, j, alpha_, beta_)/wf;
+
         }
     }
+
+//    mat rPlus = zeros<mat>(nParticles, nDimensions);
+//    mat rMinus = zeros<mat>(nParticles, nDimensions);
+
+//    rPlus = rMinus = r;
+
+//    double waveFunctionMinus = 0;
+//    double waveFunctionPlus = 0;
+
+//    //First derivative, divided by the wf
+
+//    for(int i = 0; i < nParticles; i++) {
+//        for(int j = 0; j < nDimensions; j++) {
+//            rPlus(i,j) = r(i,j)+h;
+//            rMinus(i,j) = r(i,j)-h;
+//            waveFunctionMinus = function->waveFunction(rMinus, alpha_, beta_);
+//            waveFunctionPlus = function->waveFunction(rPlus, alpha_, beta_);
+//            qforce(i,j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
+//            rPlus(i,j) = r(i,j);
+//            rMinus(i,j) = r(i,j);
+//        }
+//    }
 
     return qforce;
 }
 
 
-void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
+void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
 
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);

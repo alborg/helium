@@ -13,17 +13,21 @@ class slaterDeterminant
 public:
     slaterDeterminant(int nParticles_, int nDimensions_);
     void buildDeterminant(const mat &r, double &alpha_);
-    double getDeterminant(const mat &r, double &alpha_);
+    double getDeterminant();
     double beryllium(const mat &r, double &alpha);
 
 private:
 
+    WaveFunction *function;
     int nDimensions;
     int nParticles;
     double alpha;
     mat slaterMatrixUp;
     mat slaterMatrixDown;
-    WaveFunction *function;
+    mat slaterMatrixUpNew;
+    mat slaterMatrixDownNew;
+    mat invSlaterMatrixUp;
+    mat invSlaterMatrixDown;
 
 };
 
