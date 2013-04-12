@@ -18,9 +18,17 @@ public:
     double psi1s(double r, double alpha);
     double psi2s(double r, double alpha);
     double psi2p(double r, double alpha);
-    double dPsi1s(double rtot, double variable, double alpha);
-    double dPsi2s(double rtot, double variable, double alpha);
-    double dPsi2p(double rtot, double variable, double alpha);
+    vec dPsi1s(double rtot, const mat &r, double alpha);
+    vec dPsi2s(double rtot, const mat &r, double alpha);
+    vec dPsi2p0(double rtot, const mat &r, double alpha);
+    vec dPsi2p_1(double rtot, const mat &r, double alpha);
+    vec dPsi2p1(double rtot, const mat &r, double alpha);
+    double d2Psi1s(double rtot, const mat &r, double alpha);
+    double d2Psi2s(double rtot, const mat &r, double alpha);
+    double d2Psi2p0(double rtot, const mat &r, double alpha);
+    double d2Psi2p_1(double rtot, const mat &r, double alpha);
+    double d2Psi2p1(double rtot, const mat &r, double alpha);
+
 
 private:
 
