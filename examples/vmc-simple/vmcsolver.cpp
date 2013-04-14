@@ -251,11 +251,15 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function) {
 
     mat qforce = zeros(nParticles, nDimensions);
+    vec del = zeros<vec>(3,1);
 
     for(int i = 0; i < nParticles; i++) {
+
+        del = function->gradientWaveFunction(r, i, alpha_, beta_);
+
         for(int j = 0; j < nDimensions; j++) {
 
-            qforce(i,j) = function->gradientWaveFunction(r, i, j, alpha_, beta_)/wf;
+            qforce(i,j) = del(j)/wf;
 
         }
     }

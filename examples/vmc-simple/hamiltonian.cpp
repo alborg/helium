@@ -25,31 +25,16 @@ double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double 
 double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function)
 {
 
-    mat rPlus = zeros<mat>(nParticles, nDimensions);
-    mat rMinus = zeros<mat>(nParticles, nDimensions);
-
-    rPlus = rMinus = r;
-
-    double waveFunctionMinus = 0;
-    double waveFunctionPlus = 0;
-
-    //double waveFunctionCurrent = function->waveFunction(r, alpha, beta); //Find wavefunction for r
-
-    //Second derivative (del^2):
+ //Second derivative (del^2):
 
     double kineticEnergy = 0;
-//    for(int i = 0; i < nParticles; i++) {
-//        for(int j = 0; j < nDimensions; j++) {
-//            rPlus(i,j) += h;
-//            rMinus(i,j) -= h;
-//            waveFunctionMinus = function->waveFunction(rMinus, alpha, beta);
-//            waveFunctionPlus = function->waveFunction(rPlus, alpha, beta);
-//            kineticEnergy -= (waveFunctionMinus + waveFunctionPlus - 2 * waveFunctionCurrent);
-//            rPlus(i,j) = r(i,j);
-//            rMinus(i,j) = r(i,j);
-//        }
-//    }
-//    kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
+
+    for(int i = 0; i < nParticles; i++) {
+        kineticEnergy -= laPlaceWaveFunction(r, i, alpha, beta);
+    }
+
+
+    kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
 
     return kineticEnergy;
 }
@@ -82,7 +67,7 @@ double Hamiltonian::potentialEnergy(const mat &r)
     return potentialEnergy;
 }
 
-double Hamiltonian::analyticEnergyH(const mat &r, const double &alpha, const double &beta)
+double Hamiltonian::analyticEnergyHe(const mat &r, const double &alpha, const double &beta)
 {
     double r1 = sqrt(norm(r.row(0),2));
     double r2 = sqrt(norm(r.row(1),2));

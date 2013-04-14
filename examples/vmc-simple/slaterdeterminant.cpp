@@ -49,16 +49,16 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
                 slaterMatrixDown(i,k) = function->psi2s(rs[nParticles/2+k], alpha);
             }
             if (i == 2) { //n=2,l=1,ml=-1
-                slaterMatrixUp(i,k) = r(k,1)*function->psi2p(rs[k], alpha);
-                slaterMatrixDown(i,k) = r(k,1)*function->psi2p(rs[nParticles/2+k], alpha);
+                slaterMatrixUp(i,k) = r(k,1)*function->psi2p(rs[k], i, r, alpha);
+                slaterMatrixDown(i,k) = r(k,1)*function->psi2p(rs[nParticles/2+k], i, r, alpha);
             }
             if (i == 3) { //n=2,l=1,ml=0
-                slaterMatrixUp(i,k) = r(k,0)*function->psi2p(rs[k], alpha);
-                slaterMatrixDown(i,k) = r(k,0)*function->psi2p(rs[nParticles/2+k], alpha);
+                slaterMatrixUp(i,k) = r(k,0)*function->psi2p(rs[k], i, r, alpha);
+                slaterMatrixDown(i,k) = r(k,0)*function->psi2p(rs[nParticles/2+k], i, r, alpha);
             }
             if (i == 4) { //n=2,l=1,ml=1
-                slaterMatrixUp(i,k) = r(k,2)*function->psi2p(rs[k], alpha);
-                slaterMatrixDown(i,k) = r(k,2)*function->psi2p(rs[nParticles/2+k], alpha);
+                slaterMatrixUp(i,k) = r(k,2)*function->psi2p(rs[k], i, r, alpha);
+                slaterMatrixDown(i,k) = r(k,2)*function->psi2p(rs[nParticles/2+k], i, r, alpha);
             }
         }
     }
