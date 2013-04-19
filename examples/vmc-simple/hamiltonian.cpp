@@ -1,5 +1,5 @@
 #include "hamiltonian.h"
-#include "WaveFunction.h"
+#include "slaterdeterminant.h"
 
 Hamiltonian::Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2_, int charge_) :
 
@@ -13,28 +13,25 @@ Hamiltonian::Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2
 
 
 //Find the local energy (expectation value of the energy) numerically
-double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function)
+double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater)
 {
-    double kinEnergy = kineticEnergy(r, alpha, beta, function);
+    double kinEnergy = kineticEnergy(r, alpha, beta, slater);
     double potEnergy = potentialEnergy(r);
 
     return kinEnergy + potEnergy;
 }
 
 //Find the kinetic energy part of the local energy
-double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function)
+double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater)
 {
 
  //Second derivative (del^2):
 
     double kineticEnergy = 0;
 
-    for(int i = 0; i < nParticles; i++) {
-        kineticEnergy -= laPlaceWaveFunction(r, i, alpha, beta);
-    }
+    //kineticEnergy = 0.5 * h2 * slater->laPlaceWaveFunction(r, alpha, beta);
+    kineticEnergy = 0.5 * slater->laPlaceWaveFunction(r, alpha, beta);
 
-
-    kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
 
     return kineticEnergy;
 }

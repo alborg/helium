@@ -21,7 +21,7 @@ WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 vec WaveFunction::gradientWaveFunction(const mat &r, int i, double alpha, double beta) {
 
     double rtot = 0;
-    vec derivate = 0;
+    vec derivate = zeros<vec>(3);
 
     for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
 
@@ -151,7 +151,7 @@ double WaveFunction::d2Psi2s(double rtot, int i, const mat &r, double alpha) {
 //Wavefunction, 2p ml=0 state
 double WaveFunction::psi2p0(double rtot, int i, const mat &r, double alpha) {
 
-    double psi = r(i,0)*alpha*rtot*exp(-alpha*r/2);
+    double psi = r(i,0)*alpha*rtot*exp(-alpha*rtot/2);
     return psi;
 
 }
@@ -160,14 +160,14 @@ double WaveFunction::psi2p0(double rtot, int i, const mat &r, double alpha) {
 //Wavefunction, 2p ml=-1 state
 double WaveFunction::psi2p_1(double rtot, int i, const mat &r, double alpha) {
 
-    double psi = r(i,1)*alpha*r*exp(-alpha*r/2);
+    double psi = r(i,1)*alpha*rtot*exp(-alpha*rtot/2);
     return psi;
 }
 
 //Wavefunction, 2p ml=1 state
 double WaveFunction::psi2p1(double rtot, int i, const mat &r, double alpha) {
 
-    double psi = r(i,2)*alpha*r*exp(-alpha*r/2);
+    double psi = r(i,2)*alpha*rtot*exp(-alpha*rtot/2);
     return psi;
 }
 
@@ -210,6 +210,10 @@ vec WaveFunction::dPsi2p_1(double rtot, int i, const mat &r, double alpha) {
 //First derivative of wavefunction, 2p ml=1 state
 vec WaveFunction::dPsi2p1(double rtot, int i, const mat &r, double alpha) {
 
+    double x=r(i,0);
+    double y=r(i,1);
+    double z=r(i,2);
+
     vec der = zeros<vec>(3,1);
 
     der(0) = -alpha*x*z*(alpha*rtot - 2)*exp(-alpha*rtot/2)/(2*rtot);
@@ -231,7 +235,7 @@ double WaveFunction::d2Psi2p0(double rtot, int i, const mat &r, double alpha) {
     der2(1) = alpha*x*(pow(alpha, 2)*pow(rtot, 2)*pow(y, 2) - 2*alpha*pow(rtot, 3) - 2*alpha*rtot*pow(y, 2) + 4*pow(rtot, 2) - 4*pow(y, 2))*exp(-alpha*rtot/2)/(4*pow(rtot, 3));
     der2(2) = alpha*x*(pow(alpha, 2)*pow(rtot, 2)*pow(z, 2) - 2*alpha*pow(rtot, 3) - 2*alpha*rtot*pow(z, 2) + 4*pow(rtot, 2) - 4*pow(z, 2))*exp(-alpha*rtot/2)/(4*pow(rtot, 3));
 
-   return sum(der);
+   return sum(der2);
 
 }
 

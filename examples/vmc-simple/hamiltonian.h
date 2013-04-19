@@ -1,18 +1,18 @@
 #ifndef HAMILTONIAN_H
 #define HAMILTONIAN_H
 
-#include "WaveFunction.h"
+#include "slaterdeterminant.h"
 
 
 class Hamiltonian
 {
 public:
     Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2_, int charge_);
-    double localEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function);
+    double localEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater);
     double analyticEnergyHe(const mat &r, const double &alpha, const double &beta);
 
 private:
-    double kineticEnergy(const mat &r, const double &alpha, const double &beta, WaveFunction *function);
+    double kineticEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater);
     double potentialEnergy(const mat &r);
 
 

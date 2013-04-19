@@ -21,9 +21,9 @@ VMCSolver::VMCSolver():
     h(0.001),
     h2(1000000),
     idum(-1),
-    nCycles(100000),
-    alpha_min(10),
-    alpha_max(10),
+    nCycles(1000000),
+    alpha_min(4),
+    alpha_max(4),
     alpha_steps(1),
     beta_min(0.2),
     beta_max(0.2),
@@ -95,8 +95,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
-            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            //MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
 
             if(printToFile) {
                 ostringstream ost;
@@ -233,7 +233,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
 
             // update energies
-            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, function);
+            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater);
             //deltaE = hamiltonian->analyticEnergyH(rNew, alpha, beta);
             energySum += deltaE;
             energySquaredSum += deltaE*deltaE;
@@ -245,6 +245,69 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
     cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
 
+}
+
+
+void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
+
+    rOld = zeros<mat>(nParticles, nDimensions);
+    rNew = zeros<mat>(nParticles, nDimensions);
+    int accepted_steps = 0;
+    int count_total = 0;
+    double deltaE = 0;
+
+    // initial trial positions
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = 0; j < nDimensions; j++) {
+            rOld(i,j) = stepLength * (ran2(&idum) - 0.5);
+        }
+    }
+    rNew = rOld;
+
+     slater->buildDeterminant(rOld, alpha, beta);
+
+    // loop over Monte Carlo cycles
+    for(int cycle = 0; cycle < mpi_steps; cycle++) {
+
+
+        // New position to test
+        for(int i = 0; i < nParticles; i++) { //Particles
+
+            for(int d = 0; d < nDimensions; d++) {
+                rNew(i,d) = rOld(i,d) + stepLength*(ran2(&idum) - 0.5);
+            }
+
+            ++count_total;
+
+            double ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
+
+
+            // Check for step acceptance (if yes, update position, if no, reset position)
+            if(ran2(&idum) <= ratio) {
+                ++accepted_steps;
+                for(int d = 0; d < nDimensions; d++) {
+                    rOld(i,d) = rNew(i,d);
+                }
+                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
+            }
+            else {
+                for(int d = 0; d < nDimensions; d++) {
+                    rNew(i,d) = rOld(i,d);
+                }
+            }
+
+            // update energies
+            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater);
+            //deltaE = hamiltonian->analyticEnergyH(rNew, alpha, beta);
+            energySum += deltaE;
+            energySquaredSum += deltaE*deltaE;
+            allEnergies[cycle] = deltaE;
+
+        } //Particles
+
+    } //Monte Carlo cycles
+
+    cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
 }
 
 
