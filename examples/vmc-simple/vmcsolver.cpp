@@ -21,7 +21,7 @@ VMCSolver::VMCSolver():
     h(0.001),
     h2(1000000),
     idum(-1),
-    nCycles(1000000),
+    nCycles(10),
     alpha_min(4),
     alpha_max(4),
     alpha_steps(1),
@@ -95,8 +95,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            //MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
-            MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
 
             if(printToFile) {
                 ostringstream ost;
@@ -149,15 +149,14 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
 void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
 
-    mat qForceOld = zeros(alpha_steps,beta_steps);
-    mat qForceNew = zeros(alpha_steps,beta_steps);
+    vec qForceOld = zeros<vec>(nDimensions,1);
+    vec qForceNew = zeros<vec>(nDimensions,1);
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
     double accepted_steps = 0;
     double count_total = 0;
     double deltaE = 0;
-    double waveFunctionOld = 0;
-    double waveFunctionNew = 0;
+    double ratio = 1;
 
     // initial positions
     for(int i = 0; i < nParticles; i++) {
@@ -166,10 +165,8 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
         }
     }
 
+    //Build the full Slater matrix (done only once):
     slater->buildDeterminant(rOld, alpha, beta);
-    //waveFunctionOld = function->waveFunction(rOld, alpha, beta);
-    waveFunctionOld = slater->getDeterminant();
-    qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
@@ -177,12 +174,15 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
         for(int i = 0; i < nParticles; i++) { //Particle
 
+            ratio = 1.0;
+            qForceOld = slater->gradientWaveFunction(rOld, i, ratio, alpha, beta);
+
+            // New position to test
             for(int j = 0; j < nDimensions; j++) {
-                // New position to test
-                rNew(i,j) = rOld(i,j) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(i,j)*timestep*D;
+                rNew(i,j) = rOld(i,j) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(j)*timestep*D;
             }
 
-            //Move only one particle.
+            //Move only one particle (i).
             for (int g=0; g<nParticles; g++) {
                 if(g != i) {
                     for(int j=0; j<nDimensions; j++) {
@@ -191,50 +191,40 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
                 }
             }
 
-            // Recalculate the wave function
+            //Get the ratio of the new to the old determinant (wavefunction).
+            ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
 
-            //waveFunctionNew = function->waveFunction(rNew, alpha, beta);
-
-
-            //qForceNew = quantumForce(rNew, alpha, beta, waveFunctionNew,function);
+            qForceNew = slater->gradientWaveFunction(rNew, i, ratio, alpha, beta);
 
             //Greens function
-            //double greensFunction = 0;
-            //for(int j=0; j<nDimensions; j++) {
-            //    greensFunction += 0.5*(qForceOld(i,j) + qForceNew(i,j)) * (0.5*D*timestep*(qForceOld(i,j) - qForceNew(i,j)) - rNew(i,j) + rOld(i,j));
-            //}
-            //greensFunction = exp(greensFunction);
+            double greensFunction = 0;
+            for(int d=0; d<nDimensions; d++) {
+                greensFunction += 0.5*(qForceOld(d) + qForceNew(d)) * (0.5*D*timestep*(qForceOld(d) - qForceNew(d)) - rNew(i,d) + rOld(i,d));
+            }
+            greensFunction = exp(greensFunction);
 
             ++count_total;
 
-            // Check for step acceptance (if yes, update position, if no, reset position)
-            //if(ran2(&idum) <= greensFunction * (waveFunctionNew*waveFunctionNew) / (waveFunctionOld*waveFunctionOld)) {
 
-            double ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
-
-            if(ran2(&idum) <= ratio) {
+            // Check for step acceptance (if yes, update position and determinant, if no, reset position)
+           if(ran2(&idum) <= greensFunction * ratio*ratio) {
                 ++accepted_steps;
+               cout << "Ratio accepted: " << i <<" " <<ratio*ratio<<" "<<greensFunction<< " " << greensFunction*ratio*ratio<<endl;
                 for(int j = 0; j < nDimensions; j++) {
                     rOld(i,j) = rNew(i,j);
-                    //qForceOld(i,j) = qForceNew(i,j);
                     slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
-                    waveFunctionOld = slater->getDeterminant();
-                    qForceOld = quantumForce(rOld, alpha, beta, waveFunctionOld,function);
-
                 }
-                waveFunctionOld = waveFunctionNew;
             }
             else {
+               cout << "Ratio: " << i <<" " <<ratio*ratio<<" "<<greensFunction<< " " << greensFunction*ratio*ratio<<endl;
                 for(int j = 0; j < nDimensions; j++) {
                     rNew(i,j) = rOld(i,j);
-                    //qForceNew(i,j) = qForceOld(i,j);
                 }
             }
 
 
             // update energies
             deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater);
-            //deltaE = hamiltonian->analyticEnergyH(rNew, alpha, beta);
             energySum += deltaE;
             energySquaredSum += deltaE*deltaE;
             allEnergies[cycle] = deltaE;
@@ -280,7 +270,7 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
             ++count_total;
 
             double ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
-
+            //cout << "Ratio: "<<ratio<<endl;
 
             // Check for step acceptance (if yes, update position, if no, reset position)
             if(ran2(&idum) <= ratio) {
@@ -310,25 +300,6 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
     cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
 }
 
-
-mat VMCSolver::quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function) {
-
-    mat qforce = zeros(nParticles, nDimensions);
-    vec del = zeros<vec>(3,1);
-
-    for(int i = 0; i < nParticles; i++) {
-
-        del = function->gradientWaveFunction(r, i, alpha_, beta_);
-
-        for(int j = 0; j < nDimensions; j++) {
-
-            qforce(i,j) = del(j)/wf;
-
-        }
-    }
-
-    return qforce;
-}
 
 
 

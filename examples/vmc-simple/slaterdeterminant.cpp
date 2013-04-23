@@ -36,7 +36,6 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
         rs(i) = sqrt(rSingleParticle);
     }
 
-
     //Make Slater determinants (spin up and spin down)
     for(int j=0; j<nParticles/2; j++) { //Rows: State
         for(int i=0; i<nParticles/2; i++) { //Cols: Particle (position)
@@ -65,6 +64,8 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
 
     invSlaterMatrixUp = inv(slaterMatrixUp);
     invSlaterMatrixDown = inv(slaterMatrixDown);
+
+
 }
 
 
@@ -99,6 +100,7 @@ double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha,
         }
     }
 
+
     return sum(ratio);
 }
 
@@ -112,6 +114,7 @@ vec slaterDeterminant::getStates(const mat &r, int i, double rtot, double alpha,
     if(nParticles/2>2) updatedStates(2) = function->psi2p_1(rtot, i, r, alpha); //n=2,l=1,ml=-1
     if(nParticles/2>3) updatedStates(3) = function->psi2p0(rtot, i, r, alpha); //n=2,l=1,ml=0
     if(nParticles/2>4) updatedStates(4) = function->psi2p1(rtot, i, r, alpha); //n=2,l=1,ml=1
+
     return updatedStates;
 }
 
@@ -119,58 +122,87 @@ vec slaterDeterminant::getStates(const mat &r, int i, double rtot, double alpha,
 
 void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int i, double &alpha_, double &beta_, double ratio) {
 
-    double rtotNew = 0;
-    double rtotOld = 0;
+
+    double rtot = 0;
     //Get rtot for particles' position:
     for(int d = 0; d < nDimensions; d++) {
-        rtotNew += rNew(i,d) * rNew(i,d);
-         rtotOld += rOld(i,d) * rOld(i,d);
+        rtot += rNew(i,d) * rNew(i,d);
     }
-    rtotNew = sqrt(rtotNew);
-    rtotOld = sqrt(rtotOld);
+    rtot = sqrt(rtot);
 
-    vec newStates = getStates(rNew, i, rtotNew, alpha_, beta_);
-    vec sumSj = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
+    vec newStates = getStates(rNew, i, rtot, alpha_, beta_);
+    vec sumSjUp = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
+    vec sumSjDown = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
 
     for(int j=0; j<nParticles/2; j++) { //particle
         for(int l=0; l<nParticles/2; l++) { //state
-            if(i<nParticles/2) { sumSj(j) += newStates(l) * invSlaterMatrixUp(l,j); }
-            else { sumSj(j) += newStates(l) * invSlaterMatrixDown(l,j); }
+            sumSjUp(j) += newStates(l) * invSlaterMatrixUp(l,j);
+            sumSjDown(j) += newStates(l) * invSlaterMatrixDown(l,j);
         }
     }
 
     int particle = i;
-    if(i>nParticles/2) particle = i-nParticles/2;
+    if(i>=nParticles/2) particle = i-nParticles/2;
 
     //Update inverse matrices:
 
     //All columns except column corresponding to particle i:
-
     if(i<nParticles/2) { //If particle i has spin up
-        for(int k=0; k<nParticles/2; k++) { //States (cols), inv matrix
-            for (int j=0; j<nParticles/2; j++) { //Particles (rows), inv matrix
-                if(j != particle) invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSj(j)/ratio)*invSlaterMatrixUp(k,particle);
-                invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSj(j)/ratio)*invSlaterMatrixDown(k,particle);
+        for(int k=0; k<nParticles/2; k++) { //Rows, inv matrix
+            for (int j=0; j<nParticles/2; j++) { //Cols, inv matrix
+                if(j != particle) invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSjUp(j)/ratio)*invSlaterMatrixUp(k,particle);
+                invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSjDown(j)/ratio)*invSlaterMatrixDown(k,particle);
             }
 
         }
     }
     else {  //If particle i has spin down
-        for(int k=0; k<nParticles/2; k++) { //States (cols), inv matrix
-            for (int j=0; j<nParticles/2; j++) { //Particles (rows), inv matrix
-                invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSj(j)/ratio)*invSlaterMatrixUp(k,particle);
-                if(j != particle) invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSj(j)/ratio)*invSlaterMatrixDown(k,particle);
+        for(int k=0; k<nParticles/2; k++) { //Rows, inv matrix
+            for (int j=0; j<nParticles/2; j++) { //Cols, inv matrix
+                invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSjUp(j)/ratio)*invSlaterMatrixUp(k,particle);
+                if(j != particle) invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSjDown(j)/ratio)*invSlaterMatrixDown(k,particle);
             }
 
         }
     }
 
 
-    //In column corresponding to particle i:
+    //Update column corresponding to particle i:
     for(int k=0; k<nParticles/2; k++) { //States (rows)
         if(i<nParticles/2) { invSlaterMatrixUp(k,particle) = (1/ratio)*invSlaterMatrixUp(k,particle); }
         else {invSlaterMatrixDown(k,particle) = (1/ratio)*invSlaterMatrixDown(k,particle); }
     }
+
+
+}
+
+vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, double alpha, double beta) {
+
+    double rtot = 0;
+    vec derivate = zeros<vec>(nDimensions,1);
+    vec invMatrix = zeros<vec>(nParticles/2,1);
+    for(int p=0; p<nParticles/2; p++) {
+        if(i<nParticles/2) { invMatrix(p) = invSlaterMatrixUp(p,i); }
+        else { invMatrix(p) = invSlaterMatrixDown(p,i); }
+    }
+
+    for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); }
+
+    derivate += function->dPsi1s(rtot, i, r, alpha)*(1/ratio)*invMatrix(0); //n=1,l=0,ml=0
+    if(nParticles > 1) {
+        derivate += function->dPsi2s(rtot, i, r, alpha)*(1/ratio)*invMatrix(1);
+    } //n=2,l=0,ml=0
+    if(nParticles > 2) {
+        derivate += function->dPsi2p_1(rtot, i, r, alpha)*(1/ratio)*invMatrix(2);
+    } //n=2,l=1,ml=-1
+    if(nParticles > 3) {
+        derivate += function->dPsi2p0(rtot, i, r, alpha)*(1/ratio)*invMatrix(3);
+    } //n=2,l=1,ml=0
+    if(nParticles > 4) {
+        derivate += function->dPsi2p1(rtot, i, r, alpha)*(1/ratio)*invMatrix(4);
+    } //n=2,l=1,ml=1
+
+    return derivate;
 
 }
 

@@ -14,6 +14,7 @@ public:
     slaterDeterminant(int nParticles_, int nDimensions_);
     void buildDeterminant(const mat &r, double &alpha_, double &beta_);
     double getRatioDeterminant(int i, const mat &r, double alpha, double beta);
+    vec gradientWaveFunction(const mat &r, int i, double ratio, double alpha, double beta);
     double laPlaceWaveFunction(const mat &r, double alpha, double beta);
     double getDeterminant();
     vec getStates(const mat &r, int i, double rtot, double alpha, double beta);

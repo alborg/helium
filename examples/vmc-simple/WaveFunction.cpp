@@ -18,61 +18,61 @@ WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 
 
 
-vec WaveFunction::gradientWaveFunction(const mat &r, int i, double alpha, double beta) {
+//vec WaveFunction::gradientWaveFunction(const mat &r, int i, double alpha, double beta) {
 
-    double rtot = 0;
-    vec derivate = zeros<vec>(3);
+//    double rtot = 0;
+//    vec derivate = zeros<vec>(3);
 
-    for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
+//    for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
 
-    if(i == 0 || i == nParticles/2) {
-        derivate = dPsi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
-    }
-    if(i == 1 || i == 1+nParticles/2) {
-        derivate = dPsi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
-    }
-    if(i == 2 || i == 2+nParticles/2) {
-        derivate = dPsi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
-    }
-    if(i == 3 || i == 3+nParticles/2) {
-        derivate = dPsi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
-    }
-    if(i == 4 || i == 4+nParticles/2) {
-        derivate = dPsi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
-    }
+//    if(i == 0 || i == nParticles/2) {
+//        derivate = dPsi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
+//    }
+//    if(i == 1 || i == 1+nParticles/2) {
+//        derivate = dPsi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
+//    }
+//    if(i == 2 || i == 2+nParticles/2) {
+//        derivate = dPsi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
+//    }
+//    if(i == 3 || i == 3+nParticles/2) {
+//        derivate = dPsi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
+//    }
+//    if(i == 4 || i == 4+nParticles/2) {
+//        derivate = dPsi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
+//    }
 
-    return derivate;
+//    return derivate;
 
-}
+//}
 
 
 
-double WaveFunction::laPlaceWaveFunction(const mat &r, int i, double alpha, double beta) {
+//double WaveFunction::laPlaceWaveFunction(const mat &r, int i, double alpha, double beta) {
 
-    double rtot = 0;
-    double derivate = 0;
+//    double rtot = 0;
+//    double derivate = 0;
 
-    for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
+//    for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
 
-    if(i == 0 || i == nParticles/2) {
-        derivate = d2Psi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
-    }
-    if(i == 1 || i == 1+nParticles/2) {
-        derivate = d2Psi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
-    }
-    if(i == 2 || i == 2+nParticles/2) {
-        derivate = d2Psi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
-    }
-    if(i == 3 || i == 3+nParticles/2) {
-        derivate = d2Psi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
-    }
-    if(i == 4 || i == 4+nParticles/2) {
-        derivate = d2Psi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
-    }
+//    if(i == 0 || i == nParticles/2) {
+//        derivate = d2Psi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
+//    }
+//    if(i == 1 || i == 1+nParticles/2) {
+//        derivate = d2Psi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
+//    }
+//    if(i == 2 || i == 2+nParticles/2) {
+//        derivate = d2Psi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
+//    }
+//    if(i == 3 || i == 3+nParticles/2) {
+//        derivate = d2Psi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
+//    }
+//    if(i == 4 || i == 4+nParticles/2) {
+//        derivate = d2Psi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
+//    }
 
-    return derivate;
+//    return derivate;
 
-}
+//}
 
 
 
