@@ -95,8 +95,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
-            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            //MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
 
             if(printToFile) {
                 ostringstream ost;
@@ -139,7 +139,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     if (id == 0) {
         cout << "Energies: " << energies << endl; //*2*13.6
         cout << "Energy squareds: " << energySquareds << endl; //*2*13.6*2*13.6
-        printFile(*file_energies, *file_energySquareds, *file_alpha, *file_sigma, energies, energySquareds, alphas, betas);
+       // printFile(*file_energies, *file_energySquareds, *file_alpha, *file_sigma, energies, energySquareds, alphas, betas);
         avgtime /= np;
         cout << "Min time: " << mintime << ", max time: " << maxtime << ", avg time: " << avgtime << endl;
     }
@@ -275,10 +275,10 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
             // Check for step acceptance (if yes, update position, if no, reset position)
             if(ran2(&idum) <= ratio) {
                 ++accepted_steps;
+                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
                 for(int d = 0; d < nDimensions; d++) {
                     rOld(i,d) = rNew(i,d);
                 }
-                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
             }
             else {
                 for(int d = 0; d < nDimensions; d++) {

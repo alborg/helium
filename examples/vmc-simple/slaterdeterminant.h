@@ -17,9 +17,12 @@ public:
     vec gradientWaveFunction(const mat &r, int i, double ratio, double alpha, double beta);
     double laPlaceWaveFunction(const mat &r, double alpha, double beta);
     double getDeterminant();
+    double getInvDeterminant();
     vec getStates(const mat &r, int i, double rtot, double alpha, double beta);
     void updateDeterminant(const mat &rNew, const mat &rOld, int i, double &alpha_, double &beta_, double ratio);
     double beryllium(const mat &r, double &alpha);
+    vec gradientWaveFunctionNum(const mat &r, int i, double alpha_, double beta_);
+    double getRatioDeterminantNum(int i, const mat &rOld, const mat &rNew, double alpha, double beta);
 
 private:
 

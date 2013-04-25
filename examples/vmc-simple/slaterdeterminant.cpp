@@ -76,6 +76,12 @@ double slaterDeterminant::getDeterminant() {
 }
 
 
+double slaterDeterminant::getInvDeterminant() {
+
+    return 1/(det(invSlaterMatrixUp)*det(invSlaterMatrixDown));
+
+}
+
 
 double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha, double beta) {
 
@@ -104,6 +110,12 @@ double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha,
     return sum(ratio);
 }
 
+
+double slaterDeterminant::getRatioDeterminantNum(int i, const mat &rOld, const mat &rNew, double alpha, double beta) {
+
+    return beryllium(rNew, alpha) / beryllium(rOld, alpha);
+
+}
 
 vec slaterDeterminant::getStates(const mat &r, int i, double rtot, double alpha, double beta) {
 
@@ -207,6 +219,39 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
 }
 
 
+
+
+vec slaterDeterminant::gradientWaveFunctionNum(const mat &r, int i, double alpha_, double beta_) {
+
+vec qforce = zeros(nDimensions);
+mat rPlus = zeros<mat>(nDimensions);
+mat rMinus = zeros<mat>(nDimensions);
+double wf = beryllium(r,alpha_);
+double h = 0.001;
+
+rPlus = rMinus = r;
+
+double waveFunctionMinus = 0;
+double waveFunctionPlus = 0;
+
+//First derivative
+
+
+    for(int j = 0; j < nDimensions; j++) {
+        rPlus(i,j) = r(i,j)+h;
+        rMinus(i,j) = r(i,j)-h;
+        waveFunctionMinus = beryllium(rMinus,alpha_);
+        waveFunctionPlus = beryllium(rPlus,alpha_);
+        qforce(j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
+        rPlus(i,j) = r(i,j);
+        rMinus(i,j) = r(i,j);
+    }
+
+
+return qforce;
+}
+
+
 double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double beta) {
 
     double kineticEnergy = 0;
@@ -252,7 +297,7 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double
 double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {
 
     double rs[nParticles];
-    alpha = alpha_; //Set class variable alpha
+    alpha = alpha_;
 
     //Find |r| for each electron:
     double rSingleParticle = 0;
