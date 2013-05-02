@@ -98,16 +98,11 @@ vec WaveFunction::dPsi1s(double rtot, int i, const mat &r, double alpha) {
 
 
 //Second derivative of wavefunction, 1s state
-double WaveFunction::d2Psi1s(double rtot, int i, const mat &r, double alpha) {
-    double x=r(i,0);
-    double y=r(i,1);
-    double z=r(i,2);
-    vec der = zeros<vec>(3,1);
-    der(0) = alpha*(alpha*rtot*pow(x, 2) - pow(rtot, 2) + pow(x, 2))*exp(-alpha*rtot)/pow(rtot, 3);
-    der(1) = alpha*(alpha*rtot*pow(y, 2) - pow(rtot, 2) + pow(y, 2))*exp(-alpha*rtot)/pow(rtot, 3);
-    der(2) = alpha*(alpha*rtot*pow(z, 2) - pow(rtot, 2) + pow(z, 2))*exp(-alpha*rtot)/pow(rtot, 3);
+double WaveFunction::d2Psi1s(double rtot, double alpha) {
 
-   return sum(der);
+    double der = (alpha/rtot)*(alpha*rtot - 2)*exp(-alpha*rtot);
+
+   return der;
 
 }
 
@@ -134,16 +129,11 @@ vec WaveFunction::dPsi2s(double rtot, int i, const mat &r, double alpha) {
 
 
 //Second derivative of wavefunction, 2s state
-double WaveFunction::d2Psi2s(double rtot, int i, const mat &r, double alpha) {
-    double x=r(i,0);
-    double y=r(i,1);
-    double z=r(i,2);
-    vec der = zeros<vec>(3,1);
-    der(0) = -alpha*(pow(alpha, 2)*pow(rtot, 2)*pow(x, 2) - 2*alpha*pow(rtot, 3) - 4*alpha*rtot*pow(x, 2) + 8*pow(rtot, 2) - 8*pow(x, 2))*exp(-alpha*rtot/2)/(8*pow(rtot, 3));
-    der(1) = -alpha*(pow(alpha, 2)*pow(rtot, 2)*pow(y, 2) - 2*alpha*pow(rtot, 3) - 4*alpha*rtot*pow(y, 2) + 8*pow(rtot, 2) - 8*pow(y, 2))*exp(-alpha*rtot/2)/(8*pow(rtot, 3));
-    der(2) = -alpha*(pow(alpha, 2)*pow(rtot, 2)*pow(z, 2) - 2*alpha*pow(rtot, 3) - 4*alpha*rtot*pow(z, 2) + 8*pow(rtot, 2) - 8*pow(z, 2))*exp(-alpha*rtot/2)/(8*pow(rtot, 3));
+double WaveFunction::d2Psi2s(double rtot, double alpha) {
 
-   return sum(der);
+    double der = -(alpha/(8*rtot))*(alpha*rtot-8)*(alpha*rtot-2)*exp(-alpha*rtot/2);
+
+    return der;
 
 }
 

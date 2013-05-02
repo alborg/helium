@@ -29,8 +29,7 @@ double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const doubl
 
     double kineticEnergy = 0;
 
-    //kineticEnergy = 0.5 * h2 * slater->laPlaceWaveFunction(r, alpha, beta);
-    kineticEnergy = 0.5 * slater->laPlaceWaveFunction(r, alpha, beta);
+    kineticEnergy = slater->laPlaceWaveFunction(r, alpha, beta);
 
     return kineticEnergy;
 }

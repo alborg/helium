@@ -21,7 +21,7 @@ VMCSolver::VMCSolver():
     h(0.001),
     h2(1000000),
     idum(-1),
-    nCycles(10),
+    nCycles(100000),
     alpha_min(4),
     alpha_max(4),
     alpha_steps(1),
@@ -78,7 +78,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
 
     int mpi_steps = nCycles/np;
-    idum = idum-id*0.1;
+    idum = idum-id;
 
     double* allEnergies = new double[mpi_steps+1];
 

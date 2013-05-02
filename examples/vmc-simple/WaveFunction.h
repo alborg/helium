@@ -26,8 +26,8 @@ public:
     vec dPsi2p0(double rtot, int i, const mat &r, double alpha);
     vec dPsi2p_1(double rtot, int i, const mat &r, double alpha);
     vec dPsi2p1(double rtot, int i, const mat &r, double alpha);
-    double d2Psi1s(double rtot, int i, const mat &r, double alpha);
-    double d2Psi2s(double rtot, int i, const mat &r, double alpha);
+    double d2Psi1s(double rtot, double alpha);
+    double d2Psi2s(double rtot, double alpha);
     double d2Psi2p0(double rtot, int i, const mat &r, double alpha);
     double d2Psi2p_1(double rtot, int i, const mat &r, double alpha);
     double d2Psi2p1(double rtot, int i, const mat &r, double alpha);

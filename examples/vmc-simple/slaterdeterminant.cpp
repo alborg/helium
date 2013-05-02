@@ -24,7 +24,7 @@ slaterDeterminant::slaterDeterminant(int nParticles_, int nDimensions_):
 void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &beta_) {
 
     vec rs = zeros<vec>(nParticles,1);
-    alpha = alpha_; //Set class variable alpha
+    double alpha = alpha_;
 
     //Find |r| for each electron:
     double rSingleParticle = 0;
@@ -37,27 +37,27 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
     }
 
     //Make Slater determinants (spin up and spin down)
-    for(int j=0; j<nParticles/2; j++) { //Rows: State
-        for(int i=0; i<nParticles/2; i++) { //Cols: Particle (position)
+    for(int i=0; i<nParticles/2; i++) { //Rows: Particle (position)
+        for(int j=0; j<nParticles/2; j++) { //Cols: State
             if (j == 0) { //n=1,l=0,ml=0
-                slaterMatrixUp(j,i) = function->psi1s(rs[i], alpha);
-                slaterMatrixDown(j,i) = function->psi1s(rs[nParticles/2+i], alpha);
+                slaterMatrixUp(i,j) = function->psi1s(rs[i], alpha);
+                slaterMatrixDown(i,j) = function->psi1s(rs[nParticles/2+i], alpha);
             }
             if (j == 1) {//n=2,l=0,ml=0
-                slaterMatrixUp(j,i) = function->psi2s(rs[i], alpha);
-                slaterMatrixDown(j,i) = function->psi2s(rs[nParticles/2+i], alpha);
+                slaterMatrixUp(i,j) = function->psi2s(rs[i], alpha);
+                slaterMatrixDown(i,j) = function->psi2s(rs[nParticles/2+i], alpha);
             }
             if (j == 2) { //n=2,l=1,ml=-1
-                slaterMatrixUp(j,i) = function->psi2p_1(rs[i], i, r, alpha);
-                slaterMatrixDown(j,i) = function->psi2p_1(rs[nParticles/2+i], nParticles/2+i, r, alpha);
+                slaterMatrixUp(i,j) = function->psi2p_1(rs[i], i, r, alpha);
+                slaterMatrixDown(i,j) = function->psi2p_1(rs[nParticles/2+i], nParticles/2+i, r, alpha);
             }
             if (j == 3) { //n=2,l=1,ml=0
-                slaterMatrixUp(j,i) = function->psi2p0(rs[i], i, r, alpha);
-                slaterMatrixDown(j,i) = function->psi2p0(rs[nParticles/2+i], nParticles/2+i, r, alpha);
+                slaterMatrixUp(i,j) = function->psi2p0(rs[i], i, r, alpha);
+                slaterMatrixDown(i,j) = function->psi2p0(rs[nParticles/2+i], nParticles/2+i, r, alpha);
             }
             if (j == 4) { //n=2,l=1,ml=1
-                slaterMatrixUp(j,i) = function->psi2p1(rs[i], i, r, alpha);
-                slaterMatrixDown(j,i) = function->psi2p1(rs[nParticles/2+i], nParticles/2+i, r, alpha);
+                slaterMatrixUp(i,j) = function->psi2p1(rs[i], i, r, alpha);
+                slaterMatrixDown(i,j) = function->psi2p1(rs[nParticles/2+i], nParticles/2+i, r, alpha);
             }
         }
     }
@@ -71,12 +71,23 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
 
 double slaterDeterminant::getDeterminant() {
 
+//    cout << "matrise"<<endl;
+//    cout << slaterMatrixUp << endl;
+//    cout << slaterMatrixDown << endl;
+//    cout <<"----------"<<endl;
+
+
     return det(slaterMatrixUp)*det(slaterMatrixDown);
 
 }
 
 
 double slaterDeterminant::getInvDeterminant() {
+
+//    cout << "inv matr"<<endl;
+//    cout << inv(invSlaterMatrixUp) << endl;
+//    cout << inv(invSlaterMatrixDown) << endl;
+//    cout <<"----------"<<endl;
 
     return 1/(det(invSlaterMatrixUp)*det(invSlaterMatrixDown));
 
@@ -85,29 +96,29 @@ double slaterDeterminant::getInvDeterminant() {
 
 double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha, double beta) {
 
-    vec ratio = zeros<vec>(nParticles/2,1);
+    double ratio = 0;
     double rSingleParticle = 0;
-    //Get rtot for particle's new position:
-    for(int g = 0; g < nDimensions; g++) {
-        rSingleParticle += r(i,g) * r(i,g);
+    //Get rtot for particle i's new position:
+    for(int d = 0; d < nDimensions; d++) {
+        rSingleParticle += r(i,d) * r(i,d);
     }
     double rtot = sqrt(rSingleParticle);
 
     vec updatedStates = getStates(r, i, rtot, alpha, beta); //Get states with new r for particle i
 
-    if(i<nParticles/2) {//Particle spin up
+    if(i<nParticles/2) { //Particle spin up
         for(int j=0; j<nParticles/2; j++) { //States
-            ratio(j) = updatedStates(j) * invSlaterMatrixUp(j,i);
+            ratio += updatedStates(j) * invSlaterMatrixUp(j,i);
         }
     }
     else { //Particle spin down
         for(int j=0; j<nParticles/2; j++) { //States
-            ratio(j) = updatedStates(j) * invSlaterMatrixDown(j,i-nParticles/2);
+            ratio += updatedStates(j) * invSlaterMatrixDown(j,i-nParticles/2);
         }
     }
 
 
-    return sum(ratio);
+    return ratio;
 }
 
 
@@ -146,38 +157,39 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
     vec sumSjUp = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
     vec sumSjDown = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
 
-    for(int j=0; j<nParticles/2; j++) { //particle
-        for(int l=0; l<nParticles/2; l++) { //state
+    int particle = i;
+    if(i>=nParticles/2) particle = i-nParticles/2;
+
+    for(int j=0; j<nParticles/2; j++) { //Cols
+        for(int l=0; l<nParticles/2; l++) { //Rows
             sumSjUp(j) += newStates(l) * invSlaterMatrixUp(l,j);
             sumSjDown(j) += newStates(l) * invSlaterMatrixDown(l,j);
         }
     }
 
-    int particle = i;
-    if(i>=nParticles/2) particle = i-nParticles/2;
-
     //Update inverse matrices:
 
     //All columns except column corresponding to particle i:
     if(i<nParticles/2) { //If particle i has spin up
-        for(int k=0; k<nParticles/2; k++) { //Rows, inv matrix
-            for (int j=0; j<nParticles/2; j++) { //Cols, inv matrix
+        for (int j=0; j<nParticles/2; j++) {
+            for(int k=0; k<nParticles/2; k++) {
                 if(j != particle) invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSjUp(j)/ratio)*invSlaterMatrixUp(k,particle);
-                invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSjDown(j)/ratio)*invSlaterMatrixDown(k,particle);
             }
-
         }
     }
     else {  //If particle i has spin down
-        for(int k=0; k<nParticles/2; k++) { //Rows, inv matrix
-            for (int j=0; j<nParticles/2; j++) { //Cols, inv matrix
-                invSlaterMatrixUp(k,j) = invSlaterMatrixUp(k,j) - (sumSjUp(j)/ratio)*invSlaterMatrixUp(k,particle);
+        for (int j=0; j<nParticles/2; j++) { //Cols, inv matrix
+            for(int k=0; k<nParticles/2; k++) { //Rows, inv matrix
                 if(j != particle) invSlaterMatrixDown(k,j) = invSlaterMatrixDown(k,j) - (sumSjDown(j)/ratio)*invSlaterMatrixDown(k,particle);
             }
-
         }
     }
 
+
+//    cout << "inv matr mellom " << i<<endl;
+//    cout << inv(invSlaterMatrixUp) << endl;
+//    cout << inv(invSlaterMatrixDown) << endl;
+//    cout <<"----------"<<endl;
 
     //Update column corresponding to particle i:
     for(int k=0; k<nParticles/2; k++) { //States (rows)
@@ -186,35 +198,33 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
     }
 
 
+
 }
 
 vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, double alpha, double beta) {
 
     double rtot = 0;
-    vec derivate = zeros<vec>(nDimensions,1);
+    vec gradient = zeros<vec>(nDimensions,1);
     vec invMatrix = zeros<vec>(nParticles/2,1);
-    for(int p=0; p<nParticles/2; p++) {
-        if(i<nParticles/2) { invMatrix(p) = invSlaterMatrixUp(p,i); }
-        else { invMatrix(p) = invSlaterMatrixDown(p,i); }
+
+    for(int j=0; j<nParticles/2; j++) {
+        if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
+        else { invMatrix(j) = invSlaterMatrixDown(j,i-nParticles/2); }
     }
 
     for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); }
+    rtot = sqrt(rtot);
 
-    derivate += function->dPsi1s(rtot, i, r, alpha)*(1/ratio)*invMatrix(0); //n=1,l=0,ml=0
-    if(nParticles > 1) {
-        derivate += function->dPsi2s(rtot, i, r, alpha)*(1/ratio)*invMatrix(1);
-    } //n=2,l=0,ml=0
-    if(nParticles > 2) {
-        derivate += function->dPsi2p_1(rtot, i, r, alpha)*(1/ratio)*invMatrix(2);
-    } //n=2,l=1,ml=-1
-    if(nParticles > 3) {
-        derivate += function->dPsi2p0(rtot, i, r, alpha)*(1/ratio)*invMatrix(3);
-    } //n=2,l=1,ml=0
-    if(nParticles > 4) {
-        derivate += function->dPsi2p1(rtot, i, r, alpha)*(1/ratio)*invMatrix(4);
-    } //n=2,l=1,ml=1
+    gradient = function->dPsi1s(rtot, i, r, alpha)*(1/ratio)*invMatrix(0); //n=1,l=0,ml=0
+    if(nParticles/2 > 1) gradient += function->dPsi2s(rtot, i, r, alpha)*(1/ratio)*invMatrix(1); //n=2,l=0,ml=0
+    if(nParticles/2 > 2) gradient += function->dPsi2p_1(rtot, i, r, alpha)*(1/ratio)*invMatrix(2); //n=2,l=1,ml=-1
+    if(nParticles/2 > 3) gradient += function->dPsi2p0(rtot, i, r, alpha)*(1/ratio)*invMatrix(3); //n=2,l=1,ml=0
+    if(nParticles/2 > 4) gradient += function->dPsi2p1(rtot, i, r, alpha)*(1/ratio)*invMatrix(4); //n=2,l=1,ml=1
 
-    return derivate;
+
+    //cout <<"Analytical: " << gradient<< endl;
+
+    return gradient;
 
 }
 
@@ -223,7 +233,7 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
 
 vec slaterDeterminant::gradientWaveFunctionNum(const mat &r, int i, double alpha_, double beta_) {
 
-vec qforce = zeros(nDimensions);
+vec grad = zeros(nDimensions);
 mat rPlus = zeros<mat>(nDimensions);
 mat rMinus = zeros<mat>(nDimensions);
 double wf = beryllium(r,alpha_);
@@ -236,68 +246,100 @@ double waveFunctionPlus = 0;
 
 //First derivative
 
-
     for(int j = 0; j < nDimensions; j++) {
         rPlus(i,j) = r(i,j)+h;
         rMinus(i,j) = r(i,j)-h;
+
         waveFunctionMinus = beryllium(rMinus,alpha_);
         waveFunctionPlus = beryllium(rPlus,alpha_);
-        qforce(j) = (waveFunctionPlus - waveFunctionMinus)/(wf*h);
+        grad(j) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
         rPlus(i,j) = r(i,j);
         rMinus(i,j) = r(i,j);
     }
 
+//cout <<"Numerical: "<< grad << endl;
 
-return qforce;
+return grad;
 }
 
 
 double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double beta) {
 
-    double kineticEnergy = 0;
     double rtot = 0;
-    double derivate = 0;
+    double laplace = 0;
+
+    vec invMatrix = zeros<vec>(nParticles/2,1);
 
     for(int i = 0; i < nParticles; i++) { //Particles
 
         for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); } //Get r for particle
+        rtot = sqrt(rtot);
 
-        for (int j=0; j<nParticles/2; j++) { //States
-
-            //Get laplacian for each state:
-            if(j == 0) {
-                derivate = function->d2Psi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
-            }
-            if(j == 1) {
-                derivate = function->d2Psi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
-            }
-            if(j == 2) {
-                derivate = function->d2Psi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
-            }
-            if(j == 3) {
-                derivate = function->d2Psi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
-            }
-            if(j == 4) {
-                derivate = function->d2Psi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
-            }
-
-            if(i<nParticles/2) { derivate = derivate*invSlaterMatrixUp(j,i); }
-            else { derivate = derivate*invSlaterMatrixDown(j,i-nParticles/2); }
-            kineticEnergy += derivate;
-
+        for(int j=0; j<nParticles/2; j++) {
+            if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
+            else { invMatrix(j) = invSlaterMatrixDown(j,i-nParticles/2); }
         }
+
+        //Get laplacian for each state:
+        laplace += function->d2Psi1s(rtot, alpha)*invMatrix(0); //n=1,l=0,ml=0
+        if(nParticles/2 > 1) laplace += function->d2Psi2s(rtot, alpha)*invMatrix(1);//n=2,l=0,ml=0
+        if(nParticles/2 > 2) laplace += function->d2Psi2p_1(rtot, i, r, alpha)*invMatrix(2);//n=2,l=1,ml=-1
+        if(nParticles/2 > 3) laplace += function->d2Psi2p0(rtot, i, r, alpha)*invMatrix(3);//n=2,l=1,ml=0
+        if(nParticles/2 > 4) laplace += function->d2Psi2p1(rtot, i, r, alpha)*invMatrix(4);//n=2,l=1,ml=1
+
     }
 
-    return kineticEnergy;
+    laplace = -0.5*laplace;
+    cout <<"Analytical: "<<laplace<<endl;
+
+    return laplace;
 
 }
 
+
+double slaterDeterminant::laPlaceWaveFunctionNum(const mat &r, double alpha, double beta) {
+
+    double h2 = 1000000;
+    double h = 0.001;
+
+    mat rPlus = zeros<mat>(nParticles, nDimensions);
+    mat rMinus = zeros<mat>(nParticles, nDimensions);
+
+    rPlus = rMinus = r;
+
+    double waveFunctionMinus = 0;
+    double waveFunctionPlus = 0;
+
+    double waveFunctionCurrent = beryllium(r, alpha); //Find wavefunction for r
+
+    //Second derivative (del^2):
+
+    double kineticEnergy = 0;
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = 0; j < nDimensions; j++) {
+            rPlus(i,j) += h;
+            rMinus(i,j) -= h;
+            waveFunctionMinus = beryllium(rMinus, alpha);
+            waveFunctionPlus = beryllium(rPlus, alpha);
+            kineticEnergy -= (waveFunctionMinus + waveFunctionPlus - 2 * waveFunctionCurrent);
+            rPlus(i,j) = r(i,j);
+            rMinus(i,j) = r(i,j);
+        }
+    }
+    kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
+
+    cout <<"Numerical: "<<kineticEnergy<<endl;
+
+    return kineticEnergy;
+
+
+}
 
 
 double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {
 
     double rs[nParticles];
-    alpha = alpha_;
+    double sum = 0;
 
     //Find |r| for each electron:
     double rSingleParticle = 0;
@@ -307,11 +349,14 @@ double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {
             rSingleParticle += r(i,j) * r(i,j);
         }
         rs[i] = sqrt(rSingleParticle);
+        sum += rs[i];
     }
 
     //Slater determinant, Be
-    double waveFunction = (function->psi1s(rs[0], alpha)*function->psi2s(rs[1], alpha) - function->psi1s(rs[1], alpha)*function->psi2s(rs[0], alpha))*
-                          (function->psi1s(rs[2], alpha)*function->psi2s(rs[3], alpha) - function->psi1s(rs[3], alpha)*function->psi2s(rs[2], alpha));
+    double waveFunction = (function->psi1s(rs[0], alpha_)*function->psi2s(rs[1], alpha_) - function->psi1s(rs[1], alpha_)*function->psi2s(rs[0], alpha_))*
+                          (function->psi1s(rs[2], alpha_)*function->psi2s(rs[3], alpha_) - function->psi1s(rs[3], alpha_)*function->psi2s(rs[2], alpha_));
+
+
 
     return waveFunction;
 

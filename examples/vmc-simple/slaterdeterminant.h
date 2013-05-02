@@ -16,6 +16,7 @@ public:
     double getRatioDeterminant(int i, const mat &r, double alpha, double beta);
     vec gradientWaveFunction(const mat &r, int i, double ratio, double alpha, double beta);
     double laPlaceWaveFunction(const mat &r, double alpha, double beta);
+    double laPlaceWaveFunctionNum(const mat &r, double alpha, double beta);
     double getDeterminant();
     double getInvDeterminant();
     vec getStates(const mat &r, int i, double rtot, double alpha, double beta);
@@ -29,7 +30,6 @@ private:
     WaveFunction *function;
     int nDimensions;
     int nParticles;
-    double alpha;
     mat slaterMatrixUp;
     mat slaterMatrixDown;
     mat invSlaterMatrixUp;
