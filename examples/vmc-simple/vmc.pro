@@ -20,17 +20,17 @@ INCLUDEPATH += /usr/include/mpich2-x86_64/ /usr/include/mpi/
 
 SOURCES += main.cpp \
     vmcsolver.cpp \
-    lib.cpp \
     WaveFunction.cpp \
     hamiltonian.cpp \
-    slaterdeterminant.cpp
+    slaterdeterminant.cpp \
+    lib.cpp
 
 HEADERS += \
     vmcsolver.h \
-    lib.h \
     WaveFunction.h \
     hamiltonian.h \
-    slaterdeterminant.h
+    slaterdeterminant.h \
+    lib.h
 
 
 #Maximize (-O3)

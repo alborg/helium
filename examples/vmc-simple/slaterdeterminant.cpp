@@ -272,9 +272,11 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double
 
     for(int i = 0; i < nParticles; i++) { //Particles
 
+        rtot = 0;
         for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); } //Get r for particle
         rtot = sqrt(rtot);
 
+        invMatrix.fill(0);
         for(int j=0; j<nParticles/2; j++) {
             if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
             else { invMatrix(j) = invSlaterMatrixDown(j,i-nParticles/2); }
@@ -290,7 +292,7 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double
     }
 
     laplace = -0.5*laplace;
-    cout <<"Analytical: "<<laplace<<endl;
+    //cout <<"Analytical: "<<laplace<<endl;
 
     return laplace;
 
@@ -328,7 +330,7 @@ double slaterDeterminant::laPlaceWaveFunctionNum(const mat &r, double alpha, dou
     }
     kineticEnergy = 0.5 * h2 * kineticEnergy / waveFunctionCurrent;
 
-    cout <<"Numerical: "<<kineticEnergy<<endl;
+    //cout <<"Numerical: "<<kineticEnergy<<endl;
 
     return kineticEnergy;
 

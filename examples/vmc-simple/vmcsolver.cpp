@@ -21,7 +21,7 @@ VMCSolver::VMCSolver():
     h(0.001),
     h2(1000000),
     idum(-1),
-    nCycles(100000),
+    nCycles(1000000),
     alpha_min(4),
     alpha_max(4),
     alpha_steps(1),
@@ -95,8 +95,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            //MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
-            MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
 
             if(printToFile) {
                 ostringstream ost;
@@ -178,15 +178,15 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
             qForceOld = slater->gradientWaveFunction(rOld, i, ratio, alpha, beta);
 
             // New position to test
-            for(int j = 0; j < nDimensions; j++) {
-                rNew(i,j) = rOld(i,j) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(j)*timestep*D;
+            for(int d = 0; d < nDimensions; d++) {
+                rNew(i,d) = rOld(i,d) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(d)*timestep*D;
             }
 
             //Move only one particle (i).
             for (int g=0; g<nParticles; g++) {
                 if(g != i) {
-                    for(int j=0; j<nDimensions; j++) {
-                        rNew(g,j) = rOld(g,j);
+                    for(int d=0; d<nDimensions; d++) {
+                        rNew(g,d) = rOld(g,d);
                     }
                 }
             }
@@ -209,15 +209,13 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
             // Check for step acceptance (if yes, update position and determinant, if no, reset position)
            if(ran2(&idum) <= greensFunction * ratio*ratio) {
                 ++accepted_steps;
-               cout << "Ratio accepted: " << i <<" " <<ratio*ratio<<" "<<greensFunction<< " " << greensFunction*ratio*ratio<<endl;
-                for(int j = 0; j < nDimensions; j++) {
-                    rOld(i,j) = rNew(i,j);
-                    slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
+               slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
+               for(int j = 0; j < nDimensions; j++) {
+                    rOld(i,j) = rNew(i,j);   
                 }
             }
             else {
-               cout << "Ratio: " << i <<" " <<ratio*ratio<<" "<<greensFunction<< " " << greensFunction*ratio*ratio<<endl;
-                for(int j = 0; j < nDimensions; j++) {
+               for(int j = 0; j < nDimensions; j++) {
                     rNew(i,j) = rOld(i,j);
                 }
             }

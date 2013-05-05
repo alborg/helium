@@ -100,7 +100,7 @@ vec WaveFunction::dPsi1s(double rtot, int i, const mat &r, double alpha) {
 //Second derivative of wavefunction, 1s state
 double WaveFunction::d2Psi1s(double rtot, double alpha) {
 
-    double der = (alpha/rtot)*(alpha*rtot - 2)*exp(-alpha*rtot);
+    double der = alpha*(alpha*rtot - 2)*exp(-alpha*rtot)/rtot;
 
    return der;
 
