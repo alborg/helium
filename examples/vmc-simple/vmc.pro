@@ -23,14 +23,16 @@ SOURCES += main.cpp \
     WaveFunction.cpp \
     hamiltonian.cpp \
     slaterdeterminant.cpp \
-    lib.cpp
+    lib.cpp \
+    correlation.cpp
 
 HEADERS += \
     vmcsolver.h \
     WaveFunction.h \
     hamiltonian.h \
     slaterdeterminant.h \
-    lib.h
+    lib.h \
+    correlation.h
 
 
 #Maximize (-O3)

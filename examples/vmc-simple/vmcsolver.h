@@ -5,6 +5,7 @@
 #include "WaveFunction.h"
 #include "hamiltonian.h"
 #include "slaterdeterminant.h"
+#include "correlation.h"
 
 using namespace arma;
 using namespace std;
@@ -16,8 +17,8 @@ public:
     void runMonteCarloIntegration(int argc, char* argv[]);
 
 private:
-    void MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies);
-    void MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies);
+    void MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr, double &energySum, double &energySquaredSum, double *allEnergies);
+    void MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr, double &energySum, double &energySquaredSum, double *allEnergies);
     mat quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function);
     double gaussianDeviate(long *idum);
 

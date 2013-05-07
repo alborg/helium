@@ -3,6 +3,7 @@
 #include "WaveFunction.h"
 #include "hamiltonian.h"
 #include "slaterdeterminant.h"
+#include "correlation.h"
 
 
 #include <armadillo>
@@ -21,10 +22,10 @@ VMCSolver::VMCSolver():
     h(0.001),
     h2(1000000),
     idum(-1),
-    nCycles(1000000),
-    alpha_min(4),
+    nCycles(100000),
+    alpha_min(3.5),
     alpha_max(4),
-    alpha_steps(1),
+    alpha_steps(4),
     beta_min(0.2),
     beta_max(0.2),
     beta_steps(1),
@@ -48,6 +49,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     slaterDeterminant *slater = new slaterDeterminant(nParticles, nDimensions);
     WaveFunction *function = new WaveFunction(nParticles, nDimensions);
     Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
+    correlation *corr = new correlation(nParticles, nDimensions);
 
     double energySum = 0;
     double energySquaredSum = 0;
@@ -95,8 +97,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
             cout << "ID, k,l,alpha,beta: " << id << " "<< k << " " << l <<" "<< alpha << " " << beta <<endl;
 
-            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
-            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, energySum, energySquaredSum, allEnergies);
+            MCImportance(alpha, beta, mpi_steps, function, slater, hamiltonian, corr, energySum, energySquaredSum, allEnergies);
+            //MCSampling(alpha, beta, mpi_steps, function, slater, hamiltonian, corr, energySum, energySquaredSum, allEnergies);
 
             if(printToFile) {
                 ostringstream ost;
@@ -147,7 +149,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     delete[] allEnergies;
 }
 
-void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
+void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr, double &energySum, double &energySquaredSum, double *allEnergies) {
 
     vec qForceOld = zeros<vec>(nDimensions,1);
     vec qForceNew = zeros<vec>(nDimensions,1);
@@ -157,6 +159,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
     double count_total = 0;
     double deltaE = 0;
     double ratio = 1;
+    double ratioCorr = 1;
 
     // initial positions
     for(int i = 0; i < nParticles; i++) {
@@ -193,6 +196,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
             //Get the ratio of the new to the old determinant (wavefunction).
             ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
+            ratioCorr = corr->getRatioJastrow(i, rOld, rNew, beta);
 
             qForceNew = slater->gradientWaveFunction(rNew, i, ratio, alpha, beta);
 
@@ -207,7 +211,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
 
             // Check for step acceptance (if yes, update position and determinant, if no, reset position)
-           if(ran2(&idum) <= greensFunction * ratio*ratio) {
+           if(ran2(&idum) <= greensFunction * ratio*ratio * ratioCorr*ratioCorr) {
                 ++accepted_steps;
                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
                for(int j = 0; j < nDimensions; j++) {
@@ -222,7 +226,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 
 
             // update energies
-            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater);
+            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater,corr);
             energySum += deltaE;
             energySquaredSum += deltaE*deltaE;
             allEnergies[cycle] = deltaE;
@@ -236,7 +240,7 @@ void VMCSolver::MCImportance(double alpha, double beta, int mpi_steps, WaveFunct
 }
 
 
-void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies) {
+void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr, double &energySum, double &energySquaredSum, double *allEnergies) {
 
     rOld = zeros<mat>(nParticles, nDimensions);
     rNew = zeros<mat>(nParticles, nDimensions);
@@ -267,13 +271,13 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
 
             ++count_total;
 
-            double ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
-            //cout << "Ratio: "<<ratio<<endl;
+            double ratioSlater = slater->getRatioDeterminant(i, rNew, alpha, beta);
+            double ratioCorr = corr->getRatioJastrow(i, rOld, rNew, beta);
 
             // Check for step acceptance (if yes, update position, if no, reset position)
-            if(ran2(&idum) <= ratio) {
+            if(ran2(&idum) <= ratioSlater*ratioSlater*ratioCorr*ratioCorr) {
                 ++accepted_steps;
-                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
+                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratioSlater);
                 for(int d = 0; d < nDimensions; d++) {
                     rOld(i,d) = rNew(i,d);
                 }
@@ -285,7 +289,7 @@ void VMCSolver::MCSampling(double alpha, double beta, int mpi_steps, WaveFunctio
             }
 
             // update energies
-            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater);
+            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater,corr);
             //deltaE = hamiltonian->analyticEnergyH(rNew, alpha, beta);
             energySum += deltaE;
             energySquaredSum += deltaE*deltaE;

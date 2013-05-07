@@ -1,5 +1,6 @@
 #include "hamiltonian.h"
 #include "slaterdeterminant.h"
+#include "correlation.h"
 
 Hamiltonian::Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2_, int charge_) :
 
@@ -13,23 +14,34 @@ Hamiltonian::Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2
 
 
 //Find the local energy (expectation value of the energy) numerically
-double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater)
+double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr)
 {
-    double kinEnergy = kineticEnergy(r, alpha, beta, slater);
+
+
+    double kinEnergy = kineticEnergy(r, alpha, beta, slater,corr);
     double potEnergy = potentialEnergy(r);
 
     return kinEnergy + potEnergy;
 }
 
 //Find the kinetic energy part of the local energy
-double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater)
+double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr)
 {
 
- //Second derivative (del^2):
+    vec gradSlater = zeros<vec>(nDimensions,1);
+    vec gradCorr = zeros<vec>(nDimensions,1);
+    double gradProduct = 0;
 
-    double kineticEnergy = 0;
+    double laPlaceSlater = slater->laPlaceWaveFunction(r, alpha, beta);
+    double laPlaceCorr = corr->laPlaceWaveFunction(r,beta);
 
-    kineticEnergy = slater->laPlaceWaveFunction(r, alpha, beta);
+    for(int i=0;i<nParticles;i++) {
+        gradSlater = slater->gradientWaveFunction(r,i,1,alpha,beta);
+        gradCorr = corr->gradientWaveFunction(r,i,beta);
+        gradProduct += dot(gradSlater, gradCorr);
+    }
+
+    double kineticEnergy = -0.5*(laPlaceSlater+laPlaceCorr+2*gradProduct);
 
     return kineticEnergy;
 }
@@ -47,17 +59,19 @@ double Hamiltonian::potentialEnergy(const mat &r)
         }
         potentialEnergy -= charge / sqrt(rSingleParticle);
     }
-//    // Contribution from electron-electron potential (1/rij part)
-//    double r12 = 0;
-//    for(int i = 0; i < nParticles; i++) {
-//        for(int j = i + 1; j < nParticles; j++) {
-//            r12 = 0;
-//            for(int k = 0; k < nDimensions; k++) {
-//                r12 += (r(i,k) - r(j,k)) * (r(i,k) - r(j,k));
-//            }
-//            potentialEnergy += 1 / sqrt(r12);
-//        }
-//    }
+
+    // Contribution from electron-electron potential (1/rij part)
+    double r12 = 0;
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = 0; j < i; j++) {
+            r12 = 0;
+            for(int k = 0; k < nDimensions; k++) {
+                r12 += pow((r(i,k) - r(j,k)),2);
+            }
+            potentialEnergy += 1 / sqrt(r12);
+        }
+    }
+
 
     return potentialEnergy;
 }

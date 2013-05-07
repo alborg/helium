@@ -8,11 +8,8 @@ CONFIG   += console
 CONFIG   -= qt
 TEMPLATE = app
 
-LIBS += -lUnitTest++ -larmadillo
-INCLUDEPATH += /usr/include/unittest++
-
-LIBS += -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpi #-lmpich
-INCLUDEPATH += /usr/include/mpich2-x86_64/ /usr/include/mpi/
+LIBS += -lUnitTest++ -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpi #-lmpich
+INCLUDEPATH += /usr/include/unittest++ /usr/include/mpich2-x86_64/ /usr/include/mpi/
 
 
 SOURCES += \
@@ -25,7 +22,8 @@ SOURCES += $$SRC_DIR/WaveFunction.cpp \
             #$$SRC_DIR/main.cpp \
             $$SRC_DIR/vmcsolver.cpp \
             $$SRC_DIR/slaterdeterminant.cpp \
-            $$SRC_DIR/lib.cpp
+            $$SRC_DIR/lib.cpp \
+            $$SRC_DIR/correlation.cpp
 
 HEADERS += \
     $$SRC_DIR/vmcsolver.h \
@@ -33,7 +31,8 @@ HEADERS += \
     $$SRC_DIR/WaveFunction.h \
     $$SRC_DIR/hamiltonian.h \
     $$SRC_DIR/slaterdeterminant.h \
-    $$SRC_DIR/lib.h
+    $$SRC_DIR/lib.h \
+    $$SRC_DIR/correlation.h
 
 #Maximize (-O3)
 release {

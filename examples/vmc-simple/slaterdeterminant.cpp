@@ -186,11 +186,6 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
     }
 
 
-//    cout << "inv matr mellom " << i<<endl;
-//    cout << inv(invSlaterMatrixUp) << endl;
-//    cout << inv(invSlaterMatrixDown) << endl;
-//    cout <<"----------"<<endl;
-
     //Update column corresponding to particle i:
     for(int k=0; k<nParticles/2; k++) { //States (rows)
         if(i<nParticles/2) { invSlaterMatrixUp(k,particle) = (1/ratio)*invSlaterMatrixUp(k,particle); }
@@ -291,8 +286,7 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double
 
     }
 
-    laplace = -0.5*laplace;
-    //cout <<"Analytical: "<<laplace<<endl;
+     //cout <<"Analytical: "<<laplace<<endl;
 
     return laplace;
 
