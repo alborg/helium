@@ -223,6 +223,35 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
 
 }
 
+double slaterDeterminant::dWaveFunction_dalpha(const mat &r, double alpha) {
+
+    double rtot = 0;
+    double dalpha = 0;
+    vec invMatrix = zeros<vec>(nParticles/2,1);
+
+    for(int i=0; i<nParticles; i++) {
+
+        invMatrix.fill(0);
+        for(int j=0; j<nParticles/2; j++) {
+            if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
+            else { invMatrix(j) = invSlaterMatrixDown(j,i-nParticles/2); }
+        }
+
+        rtot = 0;
+        for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); }
+        rtot = sqrt(rtot);
+
+        dalpha += function->dPsi1s_dalpha(rtot, alpha)*invMatrix(0); //n=1,l=0,ml=0
+        if(nParticles/2 > 1) dalpha += function->dPsi2s_dalpha(rtot, alpha)*invMatrix(1); //n=2,l=0,ml=0
+        if(nParticles/2 > 2) dalpha += function->dPsi2p_1_dalpha(rtot, i, r, alpha)*invMatrix(2); //n=2,l=1,ml=-1
+        if(nParticles/2 > 3) dalpha += function->dPsi2p0_dalpha(rtot, i, r, alpha)*invMatrix(3); //n=2,l=1,ml=0
+        if(nParticles/2 > 4) dalpha += function->dPsi2p1_dalpha(rtot, i, r, alpha)*invMatrix(4); //n=2,l=1,ml=1
+    }
+
+    return dalpha;
+
+}
+
 
 
 

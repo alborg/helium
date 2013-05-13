@@ -31,7 +31,11 @@ public:
     double d2Psi2p0(double rtot, int i, const mat &r, double alpha);
     double d2Psi2p_1(double rtot, int i, const mat &r, double alpha);
     double d2Psi2p1(double rtot, int i, const mat &r, double alpha);
-
+    double dPsi1s_dalpha(double rtot, double alpha);
+    double dPsi2s_dalpha(double rtot, double alpha);
+    double dPsi2p0_dalpha(double rtot, int i, const mat &r, double alpha);
+    double dPsi2p_1_dalpha(double rtot, int i, const mat &r, double alpha);
+    double dPsi2p1_dalpha(double rtot, int i, const mat &r, double alpha);
 
 private:
 

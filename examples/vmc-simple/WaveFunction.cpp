@@ -18,64 +18,6 @@ WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 
 
 
-//vec WaveFunction::gradientWaveFunction(const mat &r, int i, double alpha, double beta) {
-
-//    double rtot = 0;
-//    vec derivate = zeros<vec>(3);
-
-//    for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
-
-//    if(i == 0 || i == nParticles/2) {
-//        derivate = dPsi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
-//    }
-//    if(i == 1 || i == 1+nParticles/2) {
-//        derivate = dPsi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
-//    }
-//    if(i == 2 || i == 2+nParticles/2) {
-//        derivate = dPsi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
-//    }
-//    if(i == 3 || i == 3+nParticles/2) {
-//        derivate = dPsi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
-//    }
-//    if(i == 4 || i == 4+nParticles/2) {
-//        derivate = dPsi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
-//    }
-
-//    return derivate;
-
-//}
-
-
-
-//double WaveFunction::laPlaceWaveFunction(const mat &r, int i, double alpha, double beta) {
-
-//    double rtot = 0;
-//    double derivate = 0;
-
-//    for (int j=0; j<nDimensions; j++) { rtot += r(i,j)*r(i,j); }
-
-//    if(i == 0 || i == nParticles/2) {
-//        derivate = d2Psi1s(rtot, i, r, alpha); //n=1,l=0,ml=0
-//    }
-//    if(i == 1 || i == 1+nParticles/2) {
-//        derivate = d2Psi2s(rtot, i, r, alpha);//n=2,l=0,ml=0
-//    }
-//    if(i == 2 || i == 2+nParticles/2) {
-//        derivate = d2Psi2p_1(rtot, i, r, alpha);//n=2,l=1,ml=-1
-//    }
-//    if(i == 3 || i == 3+nParticles/2) {
-//        derivate = d2Psi2p0(rtot, i, r, alpha);//n=2,l=1,ml=0
-//    }
-//    if(i == 4 || i == 4+nParticles/2) {
-//        derivate = d2Psi2p1(rtot, i, r, alpha);//n=2,l=1,ml=1
-//    }
-
-//    return derivate;
-
-//}
-
-
-
 //Wavefunction, 1s state
 double WaveFunction::psi1s(double rtot, double alpha) {
 
@@ -93,6 +35,14 @@ vec WaveFunction::dPsi1s(double rtot, int i, const mat &r, double alpha) {
     der(2) = -alpha*r(i,2)*exp(-alpha*rtot)/rtot;
 
    return der;
+
+}
+
+///First derivative of wavefunction wrt alpha, 1s state
+double WaveFunction::dPsi1s_dalpha(double rtot, double alpha) {
+
+
+   return  -rtot*exp(-alpha*rtot);
 
 }
 
@@ -128,6 +78,15 @@ vec WaveFunction::dPsi2s(double rtot, int i, const mat &r, double alpha) {
 }
 
 
+//First derivative of wavefunction wrt alpha, 2s state
+double WaveFunction::dPsi2s_dalpha(double rtot, double alpha) {
+
+    double psi = rtot*(alpha*rtot/4 - 1)*exp(-alpha*rtot/2);
+    return psi;
+
+}
+
+
 //Second derivative of wavefunction, 2s state
 double WaveFunction::d2Psi2s(double rtot, double alpha) {
 
@@ -146,11 +105,27 @@ double WaveFunction::psi2p0(double rtot, int i, const mat &r, double alpha) {
 
 }
 
+//First derivative of wavefunction wrt alpha, 2p ml=0 state
+double WaveFunction::dPsi2p0_dalpha(double rtot, int i, const mat &r, double alpha) {
+
+    double psi = r(i,0)*rtot*(1-alpha*rtot/2)*exp(-alpha*rtot/2);
+    return psi;
+
+}
+
 
 //Wavefunction, 2p ml=-1 state
 double WaveFunction::psi2p_1(double rtot, int i, const mat &r, double alpha) {
 
     double psi = r(i,1)*alpha*rtot*exp(-alpha*rtot/2);
+    return psi;
+}
+
+
+//First derivative of wavefunction wrt alpha, 2p ml=-1 state
+double WaveFunction::dPsi2p_1_dalpha(double rtot, int i, const mat &r, double alpha) {
+
+    double psi = r(i,1)*rtot*(1-alpha*rtot/2)*exp(-alpha*rtot/2);
     return psi;
 }
 
@@ -161,6 +136,12 @@ double WaveFunction::psi2p1(double rtot, int i, const mat &r, double alpha) {
     return psi;
 }
 
+//First derivative of wavefunction wrt alpha, 2p ml=1 state
+double WaveFunction::dPsi2p1_dalpha(double rtot, int i, const mat &r, double alpha) {
+
+    double psi = r(i,2)*rtot*(1-alpha*rtot/2)*exp(-alpha*rtot/2);
+    return psi;
+}
 
 //First derivative of wavefunction, 2p ml=0 state
 vec WaveFunction::dPsi2p0(double rtot, int i, const mat &r, double alpha) {
