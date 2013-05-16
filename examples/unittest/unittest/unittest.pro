@@ -23,7 +23,8 @@ SOURCES += $$SRC_DIR/WaveFunction.cpp \
             $$SRC_DIR/vmcsolver.cpp \
             $$SRC_DIR/slaterdeterminant.cpp \
             $$SRC_DIR/lib.cpp \
-            $$SRC_DIR/correlation.cpp
+            $$SRC_DIR/correlation.cpp \
+            $$SRC_DIR/minimise.cpp
 
 HEADERS += \
     $$SRC_DIR/vmcsolver.h \
@@ -32,7 +33,8 @@ HEADERS += \
     $$SRC_DIR/hamiltonian.h \
     $$SRC_DIR/slaterdeterminant.h \
     $$SRC_DIR/lib.h \
-    $$SRC_DIR/correlation.h
+    $$SRC_DIR/correlation.h \
+    $$SRC_DIR/minimise.h
 
 #Maximize (-O3)
 release {

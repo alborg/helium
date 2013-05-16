@@ -27,7 +27,7 @@ VMCSolver::VMCSolver():
     nCycles(100000),
     charge(2),
     nParticles(2),
-    alpha(1),
+    alpha(2.3),
     beta(0.6),
     minimise_var(true),
     min_steps(1000)     //Number of steps for minimiser
@@ -61,23 +61,29 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     if(minimise_var) {
 
         double gtol = 1e-5;
-        double Estep = 0.001;
+        double Estep_old = 0.001;
+        double Estep_new = 0;
         double* allEnergies1 = new double[min_steps+1];
         double Egradient = 0;
         double alpha_new = alpha;
-        double alpha_old = 0;
+        double alpha_old = alpha;
         int max_iter = 20;
         int iter = 0;
         double Elocal_new = -10;
         double Elocal_old = 0;
 
-        while(iter < max_iter && abs(Elocal_new - Elocal_old) > gtol) {
+        vec energies = MCImportance(alpha, beta, min_steps, slater, hamiltonian, corr, allEnergies1);
+        idum -= idum;
+        vec energiesPsi = MCImportance(alpha, beta, min_steps, slater, hamiltonian, corr, allEnergies1);
+        idum -= idum;
+
+
+        while(iter < max_iter&& abs(Elocal_new - Elocal_old) > gtol) {
 
             alpha_old = alpha_new;
             Elocal_old = Elocal_new;
+            Estep_old = Estep_new;
 
-            vec energies = MCImportance(alpha_old, beta, min_steps, slater, hamiltonian, corr, allEnergies1);
-            vec energiesPsi = MCImportance(alpha_old, beta, min_steps, slater, hamiltonian, corr, allEnergies1);
             double dPsi_dalpha = energies(2)/(min_steps * nParticles);
             Elocal_new = energies(0)/(min_steps * nParticles);
             double dPsi_dalpha_Elocal = energiesPsi(3)/(min_steps * nParticles);
@@ -85,8 +91,18 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
             Egradient = (2*dPsi_dalpha*Elocal_new - dPsi_dalpha_Elocal);
             cout << "dPsi/dalpha, El, PsiE: "<<dPsi_dalpha<<" "<<Elocal_new<<" " << dPsi_dalpha_Elocal<<endl;
             cout << "gradient: "<<Egradient<<endl;
-            alpha_new = alpha_old - Estep*Egradient;
+            cout <<"Helium: "<< alpha_new*alpha_new - 2*alpha_new*(charge - 5/16)<<" "<< 2*alpha_new - 2*(charge - 5/16)<<endl;
+
+            //Estep_new = Elocal_new - Estep_old*Egradient;
+            Estep_new = 0.001;
+            cout <<"Estep: "<<Estep_new<<endl;
+            alpha_new = alpha_old - Estep_new*Egradient;
             cout << "alpha new: "<<alpha_new<<endl;
+
+            energies = MCImportance(alpha_new, beta, min_steps, slater, hamiltonian, corr, allEnergies1);
+            idum -= idum;
+            energiesPsi = MCImportance(alpha_new, beta, min_steps, slater, hamiltonian, corr, allEnergies1);
+            idum -= idum;
 
             ++iter;
         }

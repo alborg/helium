@@ -3,6 +3,8 @@
 #include "../../vmc-simple/slaterdeterminant.h"
 #include "../../vmc-simple/correlation.h"
 #include "../../vmc-simple/lib.h"
+#include "../../vmc-simple/hamiltonian.h"
+#include "../../vmc-simple/minimise.h"
 #include <armadillo>
 
 using namespace arma;
@@ -10,12 +12,15 @@ using namespace std;
 
 
 TEST(Wave) {
-    int nParticles = 4;
+    int nParticles = 2;
+    int charge = 2;
     int nDimensions = 3;
-    double alpha = 4;
-    double beta = 0.2;
+    double alpha = 1.8;
+    double beta = 0.6;
     int stepLength = 1;
     long idum = -1;
+    double h = 0.001;
+    double h2 = 1000000;
     mat rOld = zeros<mat>(nParticles, nDimensions);
     mat rNew = zeros<mat>(nParticles,nDimensions);
 
@@ -30,31 +35,49 @@ TEST(Wave) {
     WaveFunction *function = new WaveFunction(nParticles, nDimensions);
     slaterDeterminant *slater = new slaterDeterminant(nParticles, nDimensions);
     correlation *corr = new correlation(nParticles,nDimensions);
+    Hamiltonian *hamiltonian = new Hamiltonian(nParticles,nDimensions,h,h2,charge);
+    minimise *mini = new minimise();
+
 
     slater -> buildDeterminant(rOld,alpha,beta);
-    double test = slater->getDeterminant();
+//    double test = slater->getDeterminant();
 
 //    CHECK(slater->getDeterminant() == slater->beryllium(rOld,alpha));
 //    CHECK(slater->getInvDeterminant() == slater->beryllium(rOld,alpha));
 
-    for(int j=0; j<1; j++) { //Cycles
+    double EnSum=0;
+    double EHeSum=0;
+    int nCycles = 1;
+
+    for(int j=0; j<nCycles; j++) { //Cycles
         for(int i = 0; i < nParticles; i++) { //Particles
 
-            cout<<"cycle, particle: "<<j<<" "<<i<<endl;
-            vec gradCorr = corr->gradientWaveFunction(rOld,i,beta);
-            vec gradCorrNum = corr->gradientWaveFunctionNum(rOld,i,beta);
-            cout <<"Grad Jastrow: "<< gradCorr<<" "<<gradCorrNum <<endl;
-            double g_x = abs(gradCorr(0) - gradCorrNum(0));
-            double g_y = abs(gradCorr(1) - gradCorrNum(1));
-            double g_z = abs(gradCorr(2) - gradCorrNum(2));
-            CHECK(g_x < 1e-2);
-            //CHECK(g_y < 1e-2);
-            //CHECK(g_z < 1e-2);
+            double En = hamiltonian->localEnergy(rOld,alpha,beta,slater,corr);
+            EnSum +=En;
 
-            double laplaceNum = corr->laPlaceWaveFunctionNum(rOld, beta);
-            double laplace = corr->laPlaceWaveFunction(rOld, beta);
-            double deltaLaP = abs(laplace - laplaceNum);
-            CHECK(laplaceNum < 1e-2);
+            double EHe = hamiltonian->analyticEnergyHe(rOld,alpha,beta);
+            EHeSum += EHe;
+
+
+
+//           cout<<"En, EHe: "<<En<<" "<<EHe<<endl;
+
+
+//            cout<<"cycle, particle: "<<j<<" "<<i<<endl;
+//            vec gradCorr = corr->gradientWaveFunction(rOld,i,beta);
+//            vec gradCorrNum = corr->gradientWaveFunctionNum(rOld,i,beta);
+//            cout <<"Grad Jastrow: "<< gradCorr<<" "<<gradCorrNum <<endl;
+//            double g_x = abs(gradCorr(0) - gradCorrNum(0));
+//            double g_y = abs(gradCorr(1) - gradCorrNum(1));
+//            double g_z = abs(gradCorr(2) - gradCorrNum(2));
+//            CHECK(g_x < 1e-2);
+//            //CHECK(g_y < 1e-2);
+//            //CHECK(g_z < 1e-2);
+
+//            double laplaceNum = corr->laPlaceWaveFunctionNum(rOld, beta);
+//            double laplace = corr->laPlaceWaveFunction(rOld, beta);
+//            double deltaLaP = abs(laplace - laplaceNum);
+//            CHECK(laplaceNum < 1e-2);
 
             //        vec a1 = slater->gradientWaveFunction(rOld,i,1.0,4,0.2);
             //        vec b1 = slater->gradientWaveFunctionNum(rOld,i,4,0.2);
@@ -71,7 +94,7 @@ TEST(Wave) {
 
             //Accept new step
             //        double ratio1 = slater->getRatioDeterminantNum(i,rOld,rNew,alpha, beta);
-            //        double ratio2 = slater->getRatioDeterminant(i,rNew,alpha, beta);
+                    double ratio2 = slater->getRatioDeterminant(i,rNew,alpha, beta);
 
             //        double error3 = 1e-3;
             //        double getRatioDeterminant = abs(ratio2 - ratio1);
@@ -91,7 +114,7 @@ TEST(Wave) {
 
 
 
-            //        slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio1);
+                    slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio2);
 
             //        double error4 = 1e-3;
             //        double getDeterminant = abs(slater->getInvDeterminant() - slater->beryllium(rNew,alpha));
@@ -110,6 +133,14 @@ TEST(Wave) {
             //        CHECK(lap_diff<error1);
         }
     }
+
+        EnSum = EnSum/(nCycles*nParticles);
+        EHeSum = EHeSum/(nCycles*nParticles);
+        cout << "Analytic, num: "<<EHeSum<<" "<<EnSum<<endl;
+
+
+
+
 }
 
 
