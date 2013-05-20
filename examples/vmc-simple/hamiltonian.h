@@ -10,7 +10,7 @@ class Hamiltonian
 public:
     Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2_, int charge_);
     double localEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr);
-    double dPsi(int var, const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr);
+    vec dPsi(const mat &r, double alpha, double beta, slaterDeterminant *slater, correlation *corr);
     double analyticEnergyHe(const mat &r, const double &alpha, const double &beta);
     double analyticdEnergyHe(const mat &r, const double &alpha, const double &beta);
 

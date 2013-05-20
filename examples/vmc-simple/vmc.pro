@@ -24,7 +24,8 @@ SOURCES += main.cpp \
     hamiltonian.cpp \
     slaterdeterminant.cpp \
     lib.cpp \
-    correlation.cpp
+    correlation.cpp \
+    minimise.cpp
 
 HEADERS += \
     vmcsolver.h \
@@ -32,7 +33,8 @@ HEADERS += \
     hamiltonian.h \
     slaterdeterminant.h \
     lib.h \
-    correlation.h
+    correlation.h \
+    minimise.h
 
 
 #Maximize (-O3)

@@ -15,19 +15,19 @@ correlation::correlation(int nParticles_, int nDimensions_):
 double correlation::jastrow(const mat &r, double beta) {
 
     double exponent=0;
-    double a = 1/4;
+    double a = 0.25;
     double rij = 0;
 
     for(int j=1;j<nParticles;j++) {
         for(int i=0;i<j;i++) {
             int test1 = i-nParticles/2;
             int test2 = j-nParticles/2;
-            if(test1*test2>0) a=1/4;
-            else a=1/2;
+            if(test1*test2>0) a=0.25;
+            else a=0.5;
             rij = 0;
             for(int d=0;d<nDimensions;d++) rij += (r(i,d)-r(j,d))*(r(i,d)-r(j,d));
             rij = sqrt(rij);
-            exponent += (a*rij)/(1+beta*rij);
+            exponent += (a*rij)/(1.0+beta*rij);
         }
     }
 

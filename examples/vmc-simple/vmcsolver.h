@@ -18,14 +18,20 @@ public:
     void runMonteCarloIntegration(int argc, char* argv[]);
 
 private:
-    vec MCImportance(double alpha, double beta, int mpi_steps,
+    vec MCImportance(long idum, double alpha, double beta, int mpi_steps,
                       slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr,
                       double *allEnergies);
-    vec MCSampling(double alpha, double beta, int mpi_steps,
+    vec MCSampling(long idum, double alpha, double beta, int mpi_steps,
                     slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr,
                     double *allEnergies);
     mat quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function);
     double gaussianDeviate(long *idum);
+    double gradE(vec dPsi, double Elocal, vec dPsi_Elocal, vec &g);
+    void dfpmin(vec &p, int n, double gtol, int min_steps, int *iter, double *fret,
+                           slaterDeterminant *slater,correlation *corr, Hamiltonian *hamiltonian);
+    void lnsrch(long idum, double alpha_start, double beta_start, int n, vec &xold, double fold, vec &g, vec &p, vec &x, double *f, double stpmax,
+                           int *check, int min_steps, slaterDeterminant *slater, Hamiltonian *hamiltonian,
+                           correlation *corr, double *allEnergies);
 
     void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const char &file_sigma, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
@@ -35,7 +41,6 @@ private:
     int nDimensions;
     double h;
     double h2;
-    long idum;
     double timestep;
     double D;
     double stepLength;

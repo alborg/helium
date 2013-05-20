@@ -24,14 +24,39 @@ double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double 
     return kinEnergy + potEnergy;
 }
 
-//dPsi/dalpha or dPsi/dbeta
-double Hamiltonian::dPsi(int var, const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr) {
+//dPsi/dalpha/Psi or dPsi/dbeta/Psi
+vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, slaterDeterminant *slater, correlation *corr) {
 
-    double dPsi = 0;
+    vec dPsi = zeros<vec>(2,1);
 
-    if(var == 1) { //derivative with respect to alpha:
-        dPsi = slater->dWaveFunction_dalpha(r,alpha);
-    }
+    //First derivative of wavefunction wrt alpha
+    slater->buildDeterminant(r,alpha,beta);
+    double wf = slater->getDeterminant();
+
+    double alphaPlus, alphaMinus;
+    alphaPlus = alphaMinus = alpha;
+
+    double waveFunctionMinus = 0;
+    double waveFunctionPlus = 0;
+
+    alphaPlus = alpha+h;
+    alphaMinus = alpha-h;
+    slater->buildDeterminant(r,alphaMinus,beta);
+    waveFunctionMinus = slater->getDeterminant();
+    slater->buildDeterminant(r,alphaPlus,beta);
+    waveFunctionPlus = slater->getDeterminant();
+    dPsi(0) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
+
+    //First derivative of wavefunction wrt beta
+    wf = corr->jastrow(r,beta);
+    double betaPlus, betaMinus;
+    betaPlus = betaMinus = beta;
+
+    betaPlus = beta+h;
+    betaMinus = beta-h;
+    waveFunctionMinus = corr->jastrow(r,betaMinus);
+    waveFunctionPlus = corr->jastrow(r,betaPlus);
+    dPsi(1) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
 
     return dPsi;
 }
@@ -58,7 +83,7 @@ double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const doubl
         gradProduct += dot(gradSlater, gradCorr);
     }
 
-    double kineticEnergy = -0.5*(laPlaceSlater);//+laPlaceCorr+2*gradProduct);
+    double kineticEnergy = -0.5*(laPlaceSlater+laPlaceCorr+2*gradProduct);
 
     return kineticEnergy;
 }
@@ -78,16 +103,16 @@ double Hamiltonian::potentialEnergy(const mat &r)
     }
 
     // Contribution from electron-electron potential (1/rij part)
-//    double r12 = 0;
-//    for(int i = 0; i < nParticles; i++) {
-//        for(int j = 0; j < i; j++) {
-//            r12 = 0;
-//            for(int k = 0; k < nDimensions; k++) {
-//                r12 += pow((r(i,k) - r(j,k)),2);
-//            }
-//            potentialEnergy += 1 / sqrt(r12);
-//        }
-//    }
+    double r12 = 0;
+    for(int i = 0; i < nParticles; i++) {
+        for(int j = 0; j < i; j++) {
+            r12 = 0;
+            for(int k = 0; k < nDimensions; k++) {
+                r12 += pow((r(i,k) - r(j,k)),2);
+            }
+            potentialEnergy += 1 / sqrt(r12);
+        }
+    }
 
 
     return potentialEnergy;
@@ -120,7 +145,7 @@ double Hamiltonian::analyticEnergyHe(const mat &r, const double &alpha, const do
     //With corr terms
     Energy = -pow(alpha, 2) + (alpha - charge)*(1.0/r2 + 1.0/r1) + (alpha*(1 - r12dot/(r1*r2))*(r1 + r2)/r12 + 2*beta/(beta*r12 + 1) - 1/((beta*r12 + 1)*(2*beta*r12 + 2)) - 2/r12)/((beta*r12 + 1)*(2*beta*r12 + 2)) + 1.0/r12;
     //Without corr
-    Energy = alpha*alpha - 2*alpha*(charge - 5/16);
+    //Energy = alpha*alpha - 2*alpha*(charge - 5/16);
 
     return Energy;
 }
@@ -146,7 +171,7 @@ double Hamiltonian::analyticdEnergyHe(const mat &r, const double &alpha, const d
     double dE = -2*alpha + 1.0/r2 + (1 - r12dot/(r1*r2))*(r1 + r2)/(r12*(beta*r12 + 1)*(2*beta*r12 + 2)) + 1.0/r1;
 
     //Without corr terms
-    dE = 2*alpha - 2*(charge - 5/16);
+    //dE = 2*alpha - 2*(charge - 5/16);
 
     return dE;
 }
