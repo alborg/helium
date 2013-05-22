@@ -44,6 +44,7 @@ private:
     int nProtons;
     int nElectrons;
     int nParticles;
+    int charge;
 
     bool minimise_var;
     int min_steps;

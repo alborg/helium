@@ -33,11 +33,11 @@ double WaveFunction::waveFunction(const mat &r, const mat &rProtons, double alph
         }
         wave = wave * expP;
     }
-    cout <<"wave: "<<wave<<endl;
+    //cout <<"wave: "<<wave<<endl;
 
     double jastrow = jastrowFactor(r,beta);
 
-    cout<<"jastrow: "<<jastrow<<endl;
+    //cout<<"jastrow: "<<jastrow<<endl;
 
     return wave*jastrow;
 }

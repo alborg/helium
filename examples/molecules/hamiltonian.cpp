@@ -1,14 +1,15 @@
 #include "hamiltonian.h"
 #include "WaveFunction.h"
 
-Hamiltonian::Hamiltonian(int nProtons_, int nElectrons_, int nDimensions_, double h_, double h2_) :
+Hamiltonian::Hamiltonian(int nProtons_, int nElectrons_, int nDimensions_, double h_, double h2_, int charge_) :
 
     nDimensions(nDimensions_),
     nProtons(nProtons_),
     nElectrons(nElectrons_),
     nParticles(nProtons*nElectrons),
     h(h_),
-    h2(h2_)
+    h2(h2_),
+    charge(charge_)
 {
 }
 
@@ -75,7 +76,7 @@ double Hamiltonian::potentialEnergy(double R, const mat &r, const mat &rProtons)
         for(int p=0; p<nProtons; p++) {
             rp = 0;
             for(int d=0; d<nDimensions; d++) rp += (r(e,d) - rProtons(p,d))*(r(e,d) - rProtons(p,d));
-            potentialE -= 1/sqrt(rp);
+            potentialE -= charge/sqrt(rp);
         }
     }
 

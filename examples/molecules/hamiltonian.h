@@ -9,7 +9,7 @@ using namespace arma;
 class Hamiltonian
 {
 public:
-    Hamiltonian(int nProtons_, int nElectrons_, int nDimensions_, double h_, double h2_);
+    Hamiltonian(int nProtons_, int nElectrons_, int nDimensions_, double h_, double h2_, int charge_);
     double localEnergy(double R, const mat &r, const mat &rProtons, const double &alpha, const double &beta, WaveFunction *function);
 
 private:

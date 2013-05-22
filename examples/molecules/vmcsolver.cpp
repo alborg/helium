@@ -20,13 +20,14 @@ VMCSolver::VMCSolver():
     timestep(0.05),
     D(0.5),
     stepLength(1.0),
-    nCycles(100000),
-    alpha(3.5),
+    nCycles(10000),
+    alpha(4.5),
     beta(0.3),
     R(4.63),
     nProtons(2),
     nElectrons(4),
     nParticles(nProtons*nElectrons),
+    charge(4),
     minimise_var(false),
     min_steps(1000),     //Number of steps for minimiser
     printToFile(false)
@@ -38,7 +39,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 {
 
     WaveFunction *function = new WaveFunction(nDimensions,nProtons,nElectrons);
-    Hamiltonian *hamiltonian = new Hamiltonian(nProtons, nElectrons,nDimensions,h,h2);
+    Hamiltonian *hamiltonian = new Hamiltonian(nProtons, nElectrons,nDimensions,h,h2,charge);
 
     double energies = 0;
     double energySquareds = 0;
