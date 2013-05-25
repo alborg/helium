@@ -21,13 +21,13 @@ VMCSolver::VMCSolver():
     D(0.5),
     stepLength(1.0),
     nCycles(10000),
-    alpha(4.5),
+    alpha(1.3),
     beta(0.3),
-    R(4.63),
+    R(1.34),
     nProtons(2),
-    nElectrons(4),
+    nElectrons(1),
     nParticles(nProtons*nElectrons),
-    charge(4),
+    charge(1),
     minimise_var(false),
     min_steps(1000),     //Number of steps for minimiser
     printToFile(false)
