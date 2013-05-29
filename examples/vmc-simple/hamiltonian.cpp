@@ -24,7 +24,7 @@ double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double 
     return kinEnergy + potEnergy;
 }
 
-//dPsi/dalpha/Psi or dPsi/dbeta/Psi
+//dPsi/dalpha/Psi and dPsi/dbeta/Psi
 vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, slaterDeterminant *slater, correlation *corr) {
 
     vec dPsi = zeros<vec>(2,1);
@@ -47,6 +47,8 @@ vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, slaterDeterminant
     waveFunctionPlus = slater->getDeterminant();
     dPsi(0) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
 
+    slater->buildDeterminant(r,alpha,beta);
+
     //First derivative of wavefunction wrt beta
     wf = corr->jastrow(r,beta);
     double betaPlus, betaMinus;
@@ -57,6 +59,8 @@ vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, slaterDeterminant
     waveFunctionMinus = corr->jastrow(r,betaMinus);
     waveFunctionPlus = corr->jastrow(r,betaPlus);
     dPsi(1) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
+
+
 
     return dPsi;
 }

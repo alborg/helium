@@ -20,16 +20,16 @@ VMCSolver::VMCSolver():
     timestep(0.05),
     D(0.5),
     stepLength(1.0),
-    nCycles(10000),
-    alpha(1.3),
-    beta(0.3),
-    R(1.34),
+    nCycles(100000),
+    alpha(0.6),
+    beta(1),
+    R(0.1),
     nProtons(2),
     nElectrons(1),
     nParticles(nProtons*nElectrons),
     charge(1),
-    minimise_var(false),
-    min_steps(1000),     //Number of steps for minimiser
+    minimise_var(true),
+    min_steps(10000),     //Number of steps for minimiser
     printToFile(false)
 
 {
@@ -44,29 +44,11 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     double energies = 0;
     double energySquareds = 0;
     long idum = -1;
+    mat Rs = zeros<vec>(20,4);
 
     int id, np;
 
     rProtons = zeros<mat>(nProtons, nDimensions);
-    rProtons(0,2) = -R/2;
-    rProtons(1,2) = R/2;
-
-//    if(minimise_var) {
-
-//        double gtol = 1e-5;
-
-//        int iter;
-//        double fret;
-//        vec p = zeros<vec>(2,1);
-//        p(0) = alpha;
-//        p(1) = beta;
-//        int n = 2;
-
-//        dfpmin(p, n, gtol, min_steps, &iter, &fret, hamiltonian);
-
-//        cout <<"E, iter: "<<fret<<" "<<iter<<endl;
-//        cout <<p<<endl;
-//    }
 
 
     //mpd --ncpus=4 &
@@ -87,7 +69,42 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
     cout << "ID: " << id << endl;
 
-    energySums = MCImportance(idum, alpha, beta, mpi_steps, hamiltonian, function, allEnergies);
+    for(int b=0;b<15;b++) {
+
+        R += 0.2;
+        cout<<"R: "<<R<<endl;
+        rProtons(0,2) = -R/2;
+        rProtons(1,2) = R/2;
+
+        double alpha_new = 0;
+        double beta_new = 0;
+
+    if(minimise_var) {
+
+        double gtol = 1e-4;
+        int iter;
+        double fret;
+        vec p = zeros<vec>(2,1);
+        p(0) = alpha;
+        p(1) = beta;
+        int n = 2;
+
+        vec ans = steepest_descent(idum, p, n, gtol, min_steps, &iter, &fret, hamiltonian,function);
+        cout <<ans<<endl;
+        alpha_new = ans(0);
+        beta_new = ans(1);
+
+//        MPI_Barrier(MPI_COMM_WORLD);
+
+//        MPI_Allreduce(&alpha_new, &alpha, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//        MPI_Allreduce(&beta_new, &beta, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+//        alpha = alpha/np;
+//        beta = beta/np;
+//        cout << "Final alpha, beta: "<< alpha<<" "<<beta<<endl;
+
+    }
+
+    energySums = MCImportance(idum, alpha_new, beta_new, mpi_steps, hamiltonian, function, allEnergies);
 
     if(printToFile) {
         ostringstream ost;
@@ -107,14 +124,20 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     pEnergies = energySums(0)/(nCycles * nParticles);
     pEnergySquareds = energySums(1)/(nCycles * nParticles);
 
+    Rs(b,0) = R;
+    Rs(b,1) = alpha_new;
+    Rs(b,2) = beta_new;
+    Rs(b,3) = pEnergies;
     cout << "--------------------------" << endl;
+    }
 
-
+    cout<<Rs<<endl;
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     MPI_Allreduce(&pEnergies, &energies, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&pEnergySquareds, &energySquareds, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
     myTime = MPI_Wtime() - myTime;
     MPI_Reduce(&myTime, &maxtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&myTime, &mintime, 1, MPI_DOUBLE, MPI_MIN, 0,MPI_COMM_WORLD);
@@ -140,10 +163,11 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
     double accepted_steps = 0;
     double count_total = 0;
     double deltaE = 0;
-//    vec deltaPsi = zeros<vec>(2);
-//    vec deltaPsiE = zeros<vec>(2);
+    vec deltaPsi = zeros<vec>(2);
+    vec deltaPsiE = zeros<vec>(2);
     double cycleE = 0;
     vec energySums = zeros<vec>(6);
+    double r12 = 0;
 
     mat qForceOld = zeros(nParticles,nDimensions);
     mat qForceNew = zeros(nParticles,nDimensions);
@@ -220,14 +244,15 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
             allEnergies[cycle] += deltaE;
             cycleE += deltaE;
             if(minimise_var) {
-                //deltaPsi = hamiltonian->dPsi(rNew,alpha,beta,slater,corr);
-//                deltaPsiE(0) = deltaE*deltaPsi(0);
-//                deltaPsiE(1) = deltaE*deltaPsi(1);
-//                energySums(2) += deltaPsi(0);
-//                energySums(3) += deltaPsi(1);
-//                energySums(4) += deltaPsiE(0);
-//                energySums(5) += deltaPsiE(1);
+                deltaPsi = hamiltonian->dPsi(rNew,rProtons,alpha,beta,function);
+                deltaPsiE(0) = deltaE*deltaPsi(0);
+                deltaPsiE(1) = deltaE*deltaPsi(1);
+                energySums(2) += deltaPsi(0);
+                energySums(3) += deltaPsi(1);
+                energySums(4) += deltaPsiE(0);
+                energySums(5) += deltaPsiE(1);
             }
+            r12 += sqrt(pow(rOld(0,0)-rOld(1,0),2)+pow(rOld(0,1)-rOld(1,1),2)+pow(rOld(0,2)-rOld(1,2),2));
 
 
         } //End particle loop
@@ -237,6 +262,7 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 
     } //End Monte Carlo loop
 
+    cout << "r12: "<<r12/(mpi_steps*nParticles)<<endl;
     cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
 
     return energySums;
@@ -298,196 +324,107 @@ mat VMCSolver::quantumForce(const mat &r, const mat &rProtons, double alpha_, do
     return qforce;
 }
 
+vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_steps, int *iter, double *fret,
+                       Hamiltonian *hamiltonian, WaveFunction *function)
+{
+    vec dPsi = zeros<vec>(2,1);
+    vec dPsi_Elocal = zeros<vec>(2,1);
+    double* allEnergies = new double[min_steps+1];
+    double alpha = p(0);
+    double beta = p(1);
+    double alpha_new = alpha;
+    double beta_new = beta;
+    vec dE = zeros<vec>(n);
+    vec dEold = zeros<vec>(n);
+    int maxIter = 50;
+    vec answers = zeros<vec>(n+2);
+    double E = 0;
+    double Enew = 0;
+    double alpha_step = 0.1;
+    double beta_step = 1;
+    int i = 0;
+    int j = 0;
+    double test;
+    double step_reduce = 2;
+
+    double a = 1 + exp(-R/alpha);
+    double delta = a - alpha;
+
+    while(abs(delta) > gtol && j<maxIter) {
+        if(delta > 0) alpha_new = alpha + alpha_step;
+        else alpha_new = alpha - alpha_step;
+        alpha_step = alpha_step/1.2;
+        a = 1 + exp(-R/alpha_new);
+        cout<<"Alpha, da: "<<alpha_new<<" "<<a<<endl;
+        delta = a - alpha_new;
+        alpha = alpha_new;
+        j++;
+    }
+
+    cout <<"Alpha: "<<alpha_new<<endl;
 
 
-//double VMCSolver::gradE(vec dPsi, double Elocal, vec dPsi_Elocal, vec &g) {
+    vec Es = MCImportance(idum, alpha, beta, min_steps,hamiltonian,function,allEnergies);
+    E = Es(0)/(min_steps * nParticles);
+    dPsi(0) = Es(2)/(min_steps * nParticles);
+    dPsi(1) = Es(3)/(min_steps * nParticles);
+    dPsi_Elocal(0) = Es(4)/(min_steps * nParticles);
+    dPsi_Elocal(1) = Es(5)/(min_steps * nParticles);
+    dE = gradE(dPsi, E, dPsi_Elocal);
 
-//    g(0) = 2*(dPsi(0)*Elocal - dPsi_Elocal(0));
-//    g(1) = 2*(dPsi(1)*Elocal - dPsi_Elocal(1));
-//}
+    cout <<"E: "<<E<<endl;
+
+    while(i<maxIter) {
+
+        beta_new = beta - beta_step*dE(1);
+        if(beta_new < 0) {
+            while(beta_new < 0) {
+                beta_step = beta_step/step_reduce;
+                beta_new = beta - beta_step*dE(1);
+            }
+        }
+        cout<<"dE beta: "<<dE(1)<<endl;
+        dEold = dE;
+
+        Es = MCImportance(idum, alpha_new,beta_new,min_steps,hamiltonian, function, allEnergies);
+        Enew = Es(0)/(min_steps * nParticles);
+        dPsi(0) = Es(2)/(min_steps * nParticles);
+        dPsi(1) = Es(3)/(min_steps * nParticles);
+        dPsi_Elocal(0) = Es(4)/(min_steps * nParticles);
+        dPsi_Elocal(1) = Es(5)/(min_steps * nParticles);
+        dE = gradE(dPsi, E, dPsi_Elocal);
+        if(dE(0)*dEold(0) < 0) alpha_step = alpha_step/step_reduce;
+        if(dE(1)*dEold(1) < 0) beta_step = beta_step/step_reduce;
+
+        cout <<"beta new: "<< beta_new<<" "<<endl;
+        cout <<"dE, Step: "<< dEold(1)<<" "<<beta_step<<" "<<endl;
+        cout<<"Enew: "<<Enew<<endl;
+        cout <<"----------"<<endl;
+
+        test = abs(Enew-E);
+        if(test < gtol) break;
+        E = Enew;
+        beta = beta_new;
+
+        i++;
+    }
+
+    answers(0) = alpha_new;
+    answers(1) = beta_new;
+    answers(2) = Enew;
+    answers(3) = i;
+
+    return answers;
+}
+
+vec VMCSolver::gradE(vec dPsi, double Elocal, vec dPsi_Elocal) {
+
+    vec dE = zeros<vec>(2);
+    dE(0) = 2*(dPsi_Elocal(0) - dPsi(0)*Elocal);
+    dE(1) = 2*(dPsi_Elocal(1) - dPsi(1)*Elocal);
+
+    return dE;
+}
 
 
-
-//static double sqrarg;
-//#define SQR(a) ((sqrarg=(a)) == 0.0 ? 0.0 : sqrarg*sqrarg)
-
-
-//static double maxarg1,maxarg2;
-//#define FMAX(a,b) (maxarg1=(a),maxarg2=(b),(maxarg1) > (maxarg2) ?\
-//        (maxarg1) : (maxarg2))
-
-
-
-//#define ITMAX 200
-//#define EPS 3.0e-8
-//#define TOLX (4*EPS)
-//#define STPMX 100.0
-
-
-//void VMCSolver::dfpmin(vec &p, int n, double gtol, int min_steps, int *iter, double *fret, Hamiltonian *hamiltonian)
-//{
-//    int check,i,its,j;
-//    double den,fac,fad,fp,fae,stpmax,sum=0.0,sumdg,sumxi,temp,test;
-//    vec dg = zeros<vec>(n);
-//    vec g = zeros<vec>(n);
-//    vec hdg = zeros<vec>(n);
-//    vec pnew = zeros<vec>(n);
-//    vec xi = zeros<vec>(n);
-//    mat hessian = zeros<vec>(n,n);
-//    vec dPsi = zeros<vec>(2,1);
-//    vec dPsi_Elocal = zeros<vec>(2,1);
-//    double* allEnergies = new double[min_steps+1];
-//    double alpha_start = p(0);
-//    double beta_start = p(1);
-//    long idum = -1;
-
-//    vec Es = MCImportance(idum, p(0),p(1),min_steps, slater, hamiltonian, corr, allEnergies);
-//    fp = Es(0)/(min_steps * nParticles);
-//    dPsi(0) = Es(2)/(min_steps * nParticles);
-//    dPsi(1) = Es(3)/(min_steps * nParticles);
-//    dPsi_Elocal(0) = Es(4)/(min_steps * nParticles);
-//    dPsi_Elocal(1) = Es(5)/(min_steps * nParticles);
-//    gradE(dPsi, fp, dPsi_Elocal,g);
-
-//    for (i = 0;i < n;i++) {
-//        for (j = 0; j< n;j++) hessian(i,j)=0.0;
-//        hessian(i,i)=1.0;
-//        xi(i) = -g(i);
-//        sum += p(i)*p(i);
-//    }
-//    stpmax=STPMX*FMAX(sqrt(sum),(double)n);
-//    for (its=1;its<=ITMAX;its++) {
-//        *iter=its;
-//        idum -= 1;
-//        lnsrch(idum, alpha_start, beta_start,n,p,fp,g,xi,pnew,fret,stpmax,&check,min_steps, slater, hamiltonian, corr, allEnergies);
-//        fp = *fret;
-//        for (i = 0; i< n;i++) {
-//            xi(i)=pnew(i)-p(i);
-//            p(i)=pnew(i);
-//        }
-//        if(p(0) < 0) p(0) = alpha_start;
-//        if(p(1) < 0) p(1) = beta_start;
-//        test=0.0;
-//        for (i = 0;i< n;i++) {
-//            temp=fabs(xi(i))/FMAX(fabs(p(i)),1.0);
-//            if (temp > test) test=temp;
-//        }
-//        cout<<"alpha, beta 1: "<< p <<endl;
-//        if (test < TOLX) {
-//            return;
-//        }
-//        for (i=0;i<n;i++) dg(i)=g(i);
-//        gradE(dPsi, fp, dPsi_Elocal,g);
-//        test=0.0;
-//        den=FMAX(*fret,1.0);
-//        for (i=0;i<n;i++) {
-//            temp=fabs(g(i))*FMAX(fabs(p(i)),1.0)/den;
-//            if (temp > test) test=temp;
-//        }
-//        cout<<"alpha, beta 2: "<< p <<endl;
-//        if (test < gtol) {
-//            return;
-//        }
-//        for (i=0;i<n;i++) dg(i)=g(i)-dg(i);
-//        for (i=0;i<n;i++) {
-//            hdg(i)=0.0;
-//            for (j=0;j<n;j++) hdg(i) += hessian(i,j)*dg(j);
-//        }
-//        fac=fae=sumdg=sumxi=0.0;
-//        for (i=0;i<n;i++) {
-//            fac += dg(i)*xi(i);
-//            fae += dg(i)*hdg(i);
-//            sumdg += SQR(dg(i));
-//            sumxi += SQR(xi(i));
-//        }
-//        if (fac*fac > EPS*sumdg*sumxi) {
-//            fac=1.0/fac;
-//            fad=1.0/fae;
-//            for (i=0;i<n;i++) dg(i)=fac*xi(i)-fad*hdg(i);
-//            for (i=0;i<n;i++) {
-//                for (j=0;j<n;j++) {
-//                    hessian(i,j) += fac*xi(i)*xi(j)
-//                            -fad*hdg(i)*hdg(j)+fae*dg(i)*dg(j);
-//                }
-//            }
-//        }
-//        for (i=0;i<n;i++) {
-//            xi(i)=0.0;
-//            for (j=0;j<n;j++) xi(i) -= hessian(i,j)*g(j);
-//        }
-//    }
-//    cout << "too many iterations in dfpmin" << endl;
-//}
-//#undef ITMAX
-//#undef EPS
-//#undef TOLX
-//#undef STPMX
-
-//#define ALF 1.0e-4
-//#define TOLX 1.0e-7
-
-//void VMCSolver::lnsrch(long idum, double alpha_start, double beta_start, int n, vec &xold, double fold,
-//                       vec &g, vec &p, vec &x, double *f, double stpmax,
-//                       int *check, int min_steps, Hamiltonian *hamiltonian, double *allEnergies)
-//{
-
-//    int i;
-//    double a,alam,alam2,alamin,b,disc,f2,fold2,rhs1,rhs2,slope,sum,temp,
-//            test,tmplam;
-
-//    *check=0;
-//    for (sum=0.0,i=0;i<n;i++) sum += p(i)*p(i);
-//    sum=sqrt(sum);
-//    if (sum > stpmax)
-//        for (i=0;i<n;i++) p(i) *= stpmax/sum;
-//    for (slope=0.0,i=0;i<n;i++)
-//        slope += g(i)*p(i);
-//    test=0.0;
-//    for (i=0;i<n;i++) {
-//        temp=fabs(p(i))/FMAX(fabs(xold(i)),1.0);
-//        if (temp > test) test=temp;
-//    }
-//    alamin=TOLX/test;
-//    alam=1.0;
-//    for (;;) {
-//        for (i=0;i<n;i++) {
-//            x(i)=xold(i)+alam*p(i);
-//        }
-//        if(x(0) < 0) x(0) = alpha_start;
-//        if(x(1) < 0) x(1) = beta_start;
-//         cout<<"alpha, beta 3: "<< x <<endl;
-//        idum -= 1;
-//        vec Es = MCImportance(idum, x(0),x(1),min_steps, slater, hamiltonian, corr, allEnergies);
-//        *f = Es(0)/(min_steps * nParticles);
-//        if (alam < alamin) {
-//            for (i=0;i<n;i++) x(i)=xold(i);
-//            *check=1;
-//            return;
-//        } else if (*f <= fold+ALF*alam*slope) return;
-//        else {
-//            if (alam == 1.0)
-//                tmplam = -slope/(2.0*(*f-fold-slope));
-//            else {
-//                rhs1 = *f-fold-alam*slope;
-//                rhs2=f2-fold2-alam2*slope;
-//                a=(rhs1/(alam*alam)-rhs2/(alam2*alam2))/(alam-alam2);
-//                b=(-alam2*rhs1/(alam*alam)+alam*rhs2/(alam2*alam2))/(alam-alam2);
-//                if (a == 0.0) tmplam = -slope/(2.0*b);
-//                else {
-//                    disc=b*b-3.0*a*slope;
-//                    if (disc<0.0) cout << "Roundoff problem in lnsrch." << endl;
-//                    else tmplam=(-b+sqrt(disc))/(3.0*a);
-//                }
-//                if (tmplam>0.5*alam)
-//                    tmplam=0.5*alam;
-//            }
-//        }
-//        alam2=alam;
-//        f2 = *f;
-//        fold2=fold;
-//        alam=FMAX(tmplam,0.1*alam);
-//    }
-//}
-//#undef ALF
-//#undef TOLX
 

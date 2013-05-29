@@ -6,7 +6,6 @@
 #include "hamiltonian.h"
 #include "slaterdeterminant.h"
 #include "correlation.h"
-#include "minimise.h"
 
 using namespace arma;
 using namespace std;
@@ -45,12 +44,17 @@ private:
     double stepLength;
     int nCycles;
     int charge;
+    int nProtons;
+    int nElectrons;
     int nParticles;
+    double R;
     double alpha;
     double beta;
 
     bool minimise_var;
     int min_steps;
+
+    mat rProtons;
 
 };
 

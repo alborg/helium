@@ -20,12 +20,9 @@ private:
     mat quantumForce(const mat &r, const mat &rProtons, double alpha_, double beta_, double wf,
                      WaveFunction *function);
     double gaussianDeviate(long *idum);
-//    double gradE(vec dPsi, double Elocal, vec dPsi_Elocal, vec &g);
-//    void dfpmin(vec &p, int n, double gtol, int min_steps, int *iter, double *fret,
-//                           Hamiltonian *hamiltonian);
-//    void lnsrch(long idum, double alpha_start, double beta_start, int n, vec &xold, double fold, vec &g, vec &p, vec &x, double *f, double stpmax,
-//                           int *check, int min_steps, Hamiltonian *hamiltonian,
-//                           double *allEnergies);
+    vec steepest_descent(long idum, vec &p, int n, double gtol, int min_steps, int *iter, double *fret,
+                           Hamiltonian *hamiltonian, WaveFunction *function);
+    vec gradE(vec dPsi, double Elocal, vec dPsi_Elocal);
 
 
     mat rOld;

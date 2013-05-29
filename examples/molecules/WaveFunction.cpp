@@ -19,20 +19,32 @@ WaveFunction::WaveFunction(int &nDimensions_, int &nProtons_, int &nElectrons_) 
 
 
 double WaveFunction::waveFunction(const mat &r, const mat &rProtons, double alpha, double beta) {
-
-    double rp = 0;
+    double rp;
+    double rp1 = 0;
+    double rp2 = 0;
+    double rp3 = 0;
+    double rp4 = 0;
     double expP = 0;
     double wave = 1;
 
-    for(int e=0; e<nParticles; e++) {
-        expP = 0;
-        for(int p=0; p<nProtons; p++) {
-            rp = 0;
-            for(int d=0; d<nDimensions; d++) rp += (r(e,d) - rProtons(p,d))*(r(e,d) - rProtons(p,d));
-            expP += exp(-alpha*sqrt(rp));
-        }
-        wave = wave * expP;
+    for(int d=0; d<nDimensions; d++) {
+        rp1 += pow(r(0,d) - rProtons(0,d),2);
+        rp2 += pow(r(0,d) - rProtons(1,d),2);
+        rp3 += pow(r(1,d) - rProtons(0,d),2);
+        rp4 += pow(r(1,d) - rProtons(1,d),2);
     }
+    wave = (exp(-alpha*sqrt(rp1)) - exp(-alpha*sqrt(rp2))) * (exp(-alpha*sqrt(rp3)) - exp(-alpha*sqrt(rp4)));
+//wave = 1;
+//    for(int e=0; e<nParticles; e++) {
+//        expP = 0;
+//        rp = 0;
+//        for(int p=0; p<nProtons; p++) {
+//            rp = 0;
+//            for(int d=0; d<nDimensions; d++) rp += (r(e,d) - rProtons(p,d))*(r(e,d) - rProtons(p,d));
+//            expP += exp(-alpha*sqrt(rp));
+//        }
+//        wave = wave * expP;
+//    }
     //cout <<"wave: "<<wave<<endl;
 
     double jastrow = jastrowFactor(r,beta);
@@ -49,28 +61,13 @@ double WaveFunction::jastrowFactor(const mat &r, double beta) {
     rowvec r12;
     double r12norm = 0;
     double jastrow = 0;
-    double a = 1;
-    vec spins = ones<vec>(nParticles);
-
-    if(nElectrons > 1) {
-        for(int e=0; e<nElectrons/2; e++) {
-            spins(e) = 1;
-            spins(nElectrons/2 + e) = -1;
-            spins(nElectrons + e) = 1;
-            spins(nElectrons + nElectrons/2 + e) = -1;
-        }
-    }
 
     for(int k=1;k<nParticles;k++) {
         for(int l=0;l<k;l++) {
-            if(nElectrons > 1) {
-                if(spins(k)*spins(l) > 0) a = 0.25;
-                if(spins(k)*spins(l) < 0) a = 0.5;
-            }
             r12 = r.row(k) - r.row(l);
             r12norm = 0;
             for(int d = 0; d < nDimensions; d++) r12norm +=  r12(d)*r12(d);
-            jastrow += a * sqrt(r12norm) / (2 * (1 + beta * sqrt(r12norm)));
+            jastrow += sqrt(r12norm) / (2 * (1 + beta * sqrt(r12norm)));
 
         }
     }

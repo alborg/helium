@@ -11,6 +11,7 @@ class Hamiltonian
 public:
     Hamiltonian(int nProtons_, int nElectrons_, int nDimensions_, double h_, double h2_, int charge_);
     double localEnergy(double R, const mat &r, const mat &rProtons, const double &alpha, const double &beta, WaveFunction *function);
+    vec dPsi(const mat &r, const mat &rProtons, double alpha, double beta, WaveFunction *function);
 
 private:
     double kineticEnergy(const mat &r, const mat rProtons, const double &alpha, const double &beta, WaveFunction *function);

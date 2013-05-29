@@ -19,22 +19,20 @@ include(../../defaults.pri)
 
 SOURCES += $$SRC_DIR/WaveFunction.cpp \
             $$SRC_DIR/hamiltonian.cpp \
+            $$SRC_DIR/slaterDeterminant.cpp \
+            $$SRC_DIR/correlation.cpp \
             #$$SRC_DIR/main.cpp \
             $$SRC_DIR/vmcsolver.cpp \
-            $$SRC_DIR/slaterdeterminant.cpp \
-            $$SRC_DIR/lib.cpp \
-            $$SRC_DIR/correlation.cpp \
-            $$SRC_DIR/minimise.cpp
+            $$SRC_DIR/lib.cpp
 
 HEADERS += \
     $$SRC_DIR/vmcsolver.h \
     $$SRC_DIR/lib.h \
     $$SRC_DIR/WaveFunction.h \
     $$SRC_DIR/hamiltonian.h \
-    $$SRC_DIR/slaterdeterminant.h \
-    $$SRC_DIR/lib.h \
+    $$SRC_DIR/slaterDeterminant.h \
     $$SRC_DIR/correlation.h \
-    $$SRC_DIR/minimise.h
+    $$SRC_DIR/lib.h
 
 #Maximize (-O3)
 release {

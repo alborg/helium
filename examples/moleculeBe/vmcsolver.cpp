@@ -4,7 +4,6 @@
 #include "hamiltonian.h"
 #include "slaterdeterminant.h"
 #include "correlation.h"
-#include "minimise.h"
 
 
 #include <armadillo>
@@ -19,17 +18,20 @@ using namespace std;
 VMCSolver::VMCSolver():
     nDimensions(3),
     h(0.001),
-    h2(100000),
+    h2(1000000),
     timestep(0.05),
     D(0.5),
     stepLength(1.0),
-    nCycles(1000000),
-    charge(10),
-    nParticles(10),
-    alpha(9.8),
-    beta(0.2),
+    nCycles(1),
+    charge(8),
+    nProtons(2),
+    nElectrons(4),
+    nParticles(nProtons*nElectrons),
+    R(4.63),
+    alpha(3.7),
+    beta(0.23),
     minimise_var(false),
-    min_steps(5000)     //Number of steps for minimiser
+    min_steps(10000)     //Number of steps for minimiser
 
 
 {
@@ -44,9 +46,13 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     char file_alpha[] = "../../../output/alpha_beta.txt";
     char file_sigma[] = "../../../output/sigma.txt";
 
-    slaterDeterminant *slater = new slaterDeterminant(nParticles, nDimensions);
-    Hamiltonian *hamiltonian = new Hamiltonian(nParticles, nDimensions, h, h2, charge);
-    correlation *corr = new correlation(nParticles, nDimensions);
+    rProtons = zeros<mat>(nProtons, nDimensions);
+    rProtons(0,2) = -R/2;
+    rProtons(1,2) = R/2;
+
+    slaterDeterminant *slater = new slaterDeterminant(nDimensions,nProtons,nElectrons);
+    Hamiltonian *hamiltonian = new Hamiltonian(nDimensions,h,h2,charge,nProtons,nElectrons,R,rProtons);
+    correlation *corr = new correlation(nDimensions,nProtons,nElectrons);
 
     double energies = 0;
     double energySquareds = 0;
@@ -68,7 +74,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     double* allEnergies = new double[mpi_steps+1];
     double pEnergies = 0;
     double pEnergySquareds = 0;
-    vec energySums = zeros<vec>(2);
+    vec energySums = zeros<vec>(6);
 
     cout << "ID: " << id << endl;
 
@@ -95,6 +101,8 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
         alpha = alpha/np;
         beta = beta/np;
         cout << "Final alpha, beta: "<< alpha<<" "<<beta<<endl;
+
+        idum = -1-id;
 
     }
 
@@ -134,7 +142,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Finalize();
 
     if (id == 0) {
-        cout << "Energies: " << energies << endl; //*2*13.6
+        cout << "Energy: " << energies << endl; //*2*13.6
         cout << "Energy squareds: " << energySquareds << endl; //*2*13.6*2*13.6
        // printFile(*file_energies, *file_energySquareds, *file_alpha, *file_sigma, energies, energySquareds, alphas, betas);
         avgtime /= np;
@@ -164,6 +172,7 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
     double ratioCorr = 1;
     vec energySums = zeros<vec>(6);
 
+
     // initial positions
     for(int i = 0; i < nParticles; i++) {
         for(int j = 0; j < nDimensions; j++) {
@@ -173,7 +182,7 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 
 
     //Build the full Slater matrix (done only once):
-    slater->buildDeterminant(rOld, alpha, beta);
+    slater->buildDeterminant(rOld, alpha);
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
@@ -182,7 +191,8 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
         for(int i = 0; i < nParticles; i++) { //Particle
 
             ratio = 1.0;
-            qForceOld = slater->gradientWaveFunction(rOld, i, ratio, alpha, beta);
+            qForceOld = slater->gradientWaveFunction(rOld, i, ratio, alpha);
+            cout<<"qForceOld: "<<i<<" "<<qForceOld<<endl;
 
             // New position to test
             for(int d = 0; d < nDimensions; d++) {
@@ -199,10 +209,11 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
             }
 
             //Get the ratio of the new to the old determinant (wavefunction).
-            ratio = slater->getRatioDeterminant(i, rNew, alpha, beta);
+            ratio = slater->getRatioDeterminant(i, rNew, alpha);
             ratioCorr = corr->getRatioJastrow(i, rOld, rNew, beta);
 
-            qForceNew = slater->gradientWaveFunction(rNew, i, ratio, alpha, beta);
+            qForceNew = slater->gradientWaveFunction(rNew, i, ratio, alpha);
+            cout<<"qForceNew: "<<i<<" "<<qForceNew<<endl;
 
             //Greens function
             double greensFunction = 0;
@@ -213,11 +224,12 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 
             ++count_total;
 
+            cout <<"i, Ratio, corr, green: "<<i<<" "<< ratio<<" "<<ratioCorr<<" "<<greensFunction<<endl;
 
             // Check for step acceptance (if yes, update position and determinant, if no, reset position)
            if(ran2(&idum) <= greensFunction * ratio*ratio * ratioCorr*ratioCorr) {
                 ++accepted_steps;
-               slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratio);
+               slater->updateDeterminant(rNew, rOld, i, alpha, ratio);
                for(int j = 0; j < nDimensions; j++) {
                     rOld(i,j) = rNew(i,j);   
                 }
@@ -253,7 +265,7 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 
     } //End Monte Carlo loop
 
-    //cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
+    cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
 
     return energySums;
 
@@ -282,7 +294,7 @@ vec VMCSolver::MCSampling(long idum, double alpha, double beta, int mpi_steps,
     }
     rNew = rOld;
 
-     slater->buildDeterminant(rOld, alpha, beta);
+     slater->buildDeterminant(rOld, alpha);
 
     // loop over Monte Carlo cycles
     for(int cycle = 0; cycle < mpi_steps; cycle++) {
@@ -297,13 +309,13 @@ vec VMCSolver::MCSampling(long idum, double alpha, double beta, int mpi_steps,
 
             ++count_total;
 
-            double ratioSlater = slater->getRatioDeterminant(i, rNew, alpha, beta);
+            double ratioSlater = slater->getRatioDeterminant(i, rNew, alpha);
             double ratioCorr = corr->getRatioJastrow(i, rOld, rNew, beta);
 
             // Check for step acceptance (if yes, update position, if no, reset position)
             if(ran2(&idum) <= ratioSlater*ratioSlater*ratioCorr*ratioCorr) {
                 ++accepted_steps;
-                slater->updateDeterminant(rNew, rOld, i, alpha, beta, ratioSlater);
+                slater->updateDeterminant(rNew, rOld, i, alpha, ratioSlater);
                 for(int d = 0; d < nDimensions; d++) {
                     rOld(i,d) = rNew(i,d);
                 }
@@ -379,8 +391,8 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
     vec answers = zeros<vec>(n+2);
     double E = 0;
     double Enew = 0;
-    double alpha_step = 0.5;
-    double beta_step = 0.5;
+    double alpha_step = 1;
+    double beta_step = 1;
     int i = 0;
     double test;
     double step_reduce = 2;
@@ -399,11 +411,8 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
     while(i<maxIter) {
 
         alpha_new = alpha - alpha_step*dE(0);
-        if(alpha_new < 0) {
-            alpha_step = alpha_step/step_reduce;
-            alpha_new = alpha - alpha_step*dE(0);
-        }
-        //cout<<"dE alpha: "<<dE(0)<<endl;
+        if(alpha_new < 0) alpha_new = alpha;
+        cout<<"dE alpha: "<<dE(0)<<endl;
         dEold = dE;
 
         Es = MCImportance(idum, alpha_new,beta,min_steps, slater, hamiltonian, corr, allEnergies);
@@ -415,11 +424,11 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
         dE = gradE(dPsi, E, dPsi_Elocal);
         if(dE(0)*dEold(0) < 0) alpha_step = alpha_step/step_reduce;
         if(dE(1)*dEold(1) < 0) beta_step = beta_step/step_reduce;
-        //cout <<"Enew: "<<Enew<<endl;
+        cout <<"Enew: "<<Enew<<endl;
 
-//        test = abs(Enew-E);
-//        if(test < gtol) break;
-//        E = Enew;
+        test = abs(Enew-E);
+        if(test < gtol) break;
+        E = Enew;
 
         cout <<"Alpha new: "<< alpha_new <<endl;
         cout <<"dE, Step: "<< dEold(0)<<" "<<alpha_step << endl;

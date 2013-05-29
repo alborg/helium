@@ -27,6 +27,45 @@ double Hamiltonian::localEnergy(double R, const mat &r, const mat &rProtons, con
     return kinEnergy + potEnergy;
 }
 
+vec Hamiltonian::dPsi(const mat &r, const mat &rProtons, double alpha, double beta, WaveFunction *function) {
+
+    vec dPsi = zeros<vec>(2,1);
+
+    double wf = function->waveFunction(r, rProtons, alpha, beta); //Find wavefunction for r
+
+    //First derivative of wavefunction wrt alpha
+
+
+    double alphaPlus, alphaMinus;
+    alphaPlus = alphaMinus = alpha;
+
+    double waveFunctionMinus = 0;
+    double waveFunctionPlus = 0;
+
+    alphaPlus = alpha+h;
+    alphaMinus = alpha-h;
+
+    waveFunctionMinus = function->waveFunction(r, rProtons, alphaMinus, beta);
+    waveFunctionPlus = function->waveFunction(r, rProtons, alphaPlus, beta);
+    dPsi(0) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
+
+
+    //First derivative of wavefunction wrt beta
+    double betaPlus, betaMinus;
+    betaPlus = betaMinus = beta;
+
+    betaPlus = beta+h;
+    betaMinus = beta-h;
+    waveFunctionMinus = function->waveFunction(r, rProtons, alpha, betaMinus);
+    waveFunctionPlus = function->waveFunction(r, rProtons, alpha, betaPlus);
+    dPsi(1) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
+
+
+
+    return dPsi;
+}
+
+
 
 
 //Find the kinetic energy part of the local energy
