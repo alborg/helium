@@ -1,0 +1,8 @@
+De interessante mappene ligger inne i examples:
+-blocking: Filer som ble utdelt.
+-helium: Simulerer heliumatomet
+-moleculeBe: Simulerer Be_2-molekylet, men ble ikke helt ferdig. Får feil svar.
+-moleculeHe: Simulerer H_2-molekylet (navnet ble litt feil...)
+-molecules: Gammel versjon av noe som burde vært fjernet. Ikke interessant.
+-unittest: For testing.
+-vmc-simple: Simulerer atomer opp til neon.
