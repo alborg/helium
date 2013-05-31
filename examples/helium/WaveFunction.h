@@ -2,7 +2,6 @@
 #define WAVEFUNCTION_H
 
 #include <armadillo>
-#include "slaterdeterminant.h"
 
 using namespace arma;
 using namespace std;

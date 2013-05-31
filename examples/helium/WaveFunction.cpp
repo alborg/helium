@@ -1,7 +1,5 @@
 #include "WaveFunction.h"
 #include "lib.h"
-#include "slaterdeterminant.h"
-
 #include <armadillo>
 
 
@@ -18,33 +16,29 @@ WaveFunction::WaveFunction(int &nParticles_, int &nDimensions_) :
 {
 }
 
+//Compute wavefunction of He:
 double WaveFunction::waveFunction(const mat &r, double alpha_, double beta_) {
     alpha = alpha_;
     beta = beta_;
     double argument = 0;
     double waveFunc = 0;
 
-    //Helium
-    if(nParticles==2) {
-        for(int i = 0; i < nParticles; i++) {
-            double rSingleParticle = 0;
-            for(int j = 0; j < nDimensions; j++) {
-                rSingleParticle += r(i,j) * r(i,j);
-            }
-            argument += sqrt(rSingleParticle);
+    for(int i = 0; i < nParticles; i++) {
+        double rSingleParticle = 0;
+        for(int j = 0; j < nDimensions; j++) {
+            rSingleParticle += r(i,j) * r(i,j);
         }
-        waveFunc = exp(-argument * alpha) * jastrowFactor(r);
+        argument += sqrt(rSingleParticle);
     }
+    waveFunc = exp(-argument * alpha) * jastrowFactor(r); //Both parts of wavefunction
 
-//    //Beryllium
-    if(nParticles ==4) {
-        waveFunc = slater->beryllium(r, alpha) * jastrowFactor(r);
-    }
 
-     return waveFunc;
+
+
+    return waveFunc;
 }
 
-
+//Correlation part of wavefunction:
 double WaveFunction::jastrowFactor(const mat &r) {
 
     rowvec r12;

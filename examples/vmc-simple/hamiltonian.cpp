@@ -13,7 +13,7 @@ Hamiltonian::Hamiltonian(int nParticles_, int nDimensions_, double h_, double h2
 }
 
 
-//Find the local energy (expectation value of the energy) numerically
+//Find the local energy (expectation value of the energy)
 double Hamiltonian::localEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr)
 {
 
@@ -64,9 +64,6 @@ vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, slaterDeterminant
 
     return dPsi;
 }
-
-
-
 
 
 
@@ -122,60 +119,3 @@ double Hamiltonian::potentialEnergy(const mat &r)
     return potentialEnergy;
 }
 
-double Hamiltonian::analyticEnergyHe(const mat &r, const double &alpha, const double &beta)
-{
-    vec r1vec = zeros<vec>(nDimensions);
-    vec r2vec = zeros<vec>(nDimensions);
-    double r1 = 0;
-    double r2 = 0;
-    double r12 = 0;
-     double r12dot = 0;
-    double Energy = 0;
-
-    for(int d=0; d<nDimensions; d++) {
-        r1vec(d) = r(0,d);
-        r2vec(d) = r(1,d);
-        r1 += r(0,d)*r(0,d);
-        r2 += r(1,d)*r(1,d);
-        r12 += pow((r1vec(d) - r2vec(d)),2);
-         r12dot += r(0,d)*r(1,d);
-    }
-    r12 = sqrt(r12);
-    r1 = sqrt(r1);
-    r2 = sqrt(r2);
-
-    double EL1 = (alpha - charge)*(1/r1 + 1/r2) + 1/r12 - alpha*alpha;
-
-    //With corr terms
-    Energy = -pow(alpha, 2) + (alpha - charge)*(1.0/r2 + 1.0/r1) + (alpha*(1 - r12dot/(r1*r2))*(r1 + r2)/r12 + 2*beta/(beta*r12 + 1) - 1/((beta*r12 + 1)*(2*beta*r12 + 2)) - 2/r12)/((beta*r12 + 1)*(2*beta*r12 + 2)) + 1.0/r12;
-    //Without corr
-    //Energy = alpha*alpha - 2*alpha*(charge - 5/16);
-
-    return Energy;
-}
-
-double Hamiltonian::analyticdEnergyHe(const mat &r, const double &alpha, const double &beta)
-{
-    double r1 = 0;
-    double r2 = 0;
-    double r12 = 0;
-    double r12dot = 0;
-
-    for(int d=0; d<nDimensions; d++) {
-        r1 += r(0,d)*r(0,d);
-        r2 += r(1,d)*r(1,d);
-        r12 += pow((r(0,d) - r(1,d)),2);
-        r12dot += r(0,d)*r(1,d);
-    }
-    r12 = sqrt(r12);
-    r1 = sqrt(r1);
-    r2 = sqrt(r2);
-
-    //With corr terms
-    double dE = -2*alpha + 1.0/r2 + (1 - r12dot/(r1*r2))*(r1 + r2)/(r12*(beta*r12 + 1)*(2*beta*r12 + 2)) + 1.0/r1;
-
-    //Without corr terms
-    //dE = 2*alpha - 2*(charge - 5/16);
-
-    return dE;
-}

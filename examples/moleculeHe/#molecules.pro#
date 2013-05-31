@@ -1,0 +1,27 @@
+ TEMPLATE = app
+CONFIG += console
+CONFIG -= qt
+
+LIBS += -llapack -lblas -larmadillo -L/usr/lib64/mpich2/lib -L/usr/lib/ -lmpi #-lmpich
+INCLUDEPATH += /usr/include/mpich2-x86_64/ /usr/include/mpi/
+
+
+
+
+SOURCES += main.cpp \
+    vmcsolver.cpp \
+    WaveFunction.cpp \
+    hamiltonian.cpp \
+    slaterdeterminant.cpp \
+    lib.cpp \
+    correlation.cpp \
+    minimise.cpp
+
+HEADERS += \
+    vmcsolver.h \
+    WaveFunction.h \
+    hamiltonian.h \
+    slaterdeterminant.h \
+    lib.h \
+    correlation.h \
+    minimise.h

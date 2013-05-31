@@ -16,42 +16,36 @@ using namespace arma;
 using namespace std;
 
 VMCSolver::VMCSolver():
-    nDimensions(3),
-    h(0.001),
-    h2(1000000),
-    timestep(0.05),
-    D(0.5),
-    stepLength(1.0),
-    nCycles(1),
-    charge(8),
-    nProtons(2),
-    nElectrons(4),
-    nParticles(nProtons*nElectrons),
-    R(4.63),
-    alpha(3.7),
-    beta(0.23),
-    minimise_var(false),
-    min_steps(10000)     //Number of steps for minimiser
 
+  nDimensions(3), //No of dimensions (1D, 2D, 3D, ...)
+  h(0.001),       //Constants used in numeric derivatives
+  h2(1000000),
+  nCycles(1000000),  //No of MC cycles
+  timestep(0.01), //Timestep in importance sampling
+  D(0.5),         //Constant in importance sampling
+  stepLength(1),  //Steplength in brute force Monte Carlo
+  minimise_var(false), //Use optimizer to find best values for alpha and beta
+  min_steps(50000),//Number of MC cycles for optimizer to run
+  alpha(3.7),
+  beta(0.23),
+  R(1.4),         //Distance between protons (nucleii)
+  nProtons(2),    //Total number of nuclei
+  nElectrons(1),  //No of electron per atom
+  nParticles(nProtons*nElectrons) //Total number of electrons
 
 {
 }
 
 void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 {
-    bool printToFile = false;
-
-    char file_energies[] = "../../../output/energy.txt";
-    char file_energySquareds[] = "../../../output/squareds.txt";
-    char file_alpha[] = "../../../output/alpha_beta.txt";
-    char file_sigma[] = "../../../output/sigma.txt";
+    bool printToFile = false; //Print to blocking files
 
     rProtons = zeros<mat>(nProtons, nDimensions);
     rProtons(0,2) = -R/2;
     rProtons(1,2) = R/2;
 
     slaterDeterminant *slater = new slaterDeterminant(nDimensions,nProtons,nElectrons);
-    Hamiltonian *hamiltonian = new Hamiltonian(nDimensions,h,h2,charge,nProtons,nElectrons,R,rProtons);
+    Hamiltonian *hamiltonian = new Hamiltonian(nDimensions,h,h2,nProtons,nElectrons,R,rProtons);
     correlation *corr = new correlation(nDimensions,nProtons,nElectrons);
 
     double energies = 0;
@@ -60,16 +54,16 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     int id, np;
 
 
-    //mpd --ncpus=4 &
+    //Start parallel threads
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
     MPI_Comm_size(MPI_COMM_WORLD, &np);
-
+    //Star timing
     double myTime,mintime, maxtime,avgtime;
     myTime = MPI_Wtime();
 
-    int mpi_steps = nCycles/np;
-    idum = idum-id;
+    int mpi_steps = nCycles/np;  //No of MC cycles per thread
+    idum = idum-id;  //Random seed for each thread
 
     double* allEnergies = new double[mpi_steps+1];
     double pEnergies = 0;
@@ -79,7 +73,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     cout << "ID: " << id << endl;
 
 
-    if(minimise_var) {
+    if(minimise_var) { //Optimize alpha, beta
 
         double gtol = 5e-4;
         int iter;
@@ -95,24 +89,22 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
         double beta_new = ans(1);
 
         MPI_Barrier(MPI_COMM_WORLD);
-
+        //Gather new alpha, beta
         MPI_Allreduce(&alpha_new, &alpha, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         MPI_Allreduce(&beta_new, &beta, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         alpha = alpha/np;
         beta = beta/np;
         cout << "Final alpha, beta: "<< alpha<<" "<<beta<<endl;
 
-        idum = -1-id;
 
     }
 
+    //Call importance sampling MC
     energySums = MCImportance(idum, alpha, beta, mpi_steps, slater, hamiltonian, corr, allEnergies);
-    //energySums = MCSampling(idum, alpha, beta, mpi_steps, slater, hamiltonian, corr, allEnergies);
 
-    if(printToFile) {
+    if(printToFile) { //Blocking files
         ostringstream ost;
-        //ost << "/mn/korona/rp-s1/alborg/4411/helium/examples/vmc-simple/DATA/data" << id << ".mat" ;
-        ost << "../vmc-simple/DATA/data" << id << ".mat" ;
+        ost << "/DATA/data" << id << ".mat" ;
 
         ofstream blockofile;
         blockofile.open( ost.str( ).c_str( ),ios::out | ios::binary );
@@ -124,6 +116,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
         else cout << "Unable to open data file for process " << id << endl;
     }
 
+    //Find average values of energies:
     pEnergies = energySums(0)/(nCycles * nParticles);
     pEnergySquareds = energySums(1)/(nCycles * nParticles);
 
@@ -133,6 +126,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
 
     MPI_Barrier(MPI_COMM_WORLD);
 
+    //Gather energy data from threads
     MPI_Allreduce(&pEnergies, &energies, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&pEnergySquareds, &energySquareds, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     myTime = MPI_Wtime() - myTime;
@@ -140,11 +134,11 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     MPI_Reduce(&myTime, &mintime, 1, MPI_DOUBLE, MPI_MIN, 0,MPI_COMM_WORLD);
     MPI_Reduce(&myTime, &avgtime, 1, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
     MPI_Finalize();
+    //Parallel threads ended
 
     if (id == 0) {
         cout << "Energy: " << energies << endl; //*2*13.6
         cout << "Energy squareds: " << energySquareds << endl; //*2*13.6*2*13.6
-       // printFile(*file_energies, *file_energySquareds, *file_alpha, *file_sigma, energies, energySquareds, alphas, betas);
         avgtime /= np;
         cout << "Min time: " << mintime << ", max time: " << maxtime << ", avg time: " << avgtime << endl;
     }
@@ -152,6 +146,7 @@ void VMCSolver::runMonteCarloIntegration(int argc, char *argv[])
     delete[] allEnergies;
 }
 
+//Importance sampling MC
 vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
                              slaterDeterminant *slater, Hamiltonian *hamiltonian, correlation *corr,
                              double *allEnergies) {
@@ -173,7 +168,7 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
     vec energySums = zeros<vec>(6);
 
 
-    // initial positions
+    //Get initial positions
     for(int i = 0; i < nParticles; i++) {
         for(int j = 0; j < nDimensions; j++) {
             rOld(i,j) = gaussianDeviate(&idum)*sqrt(timestep);
@@ -181,20 +176,17 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
     }
 
 
-    //Build the full Slater matrix (done only once):
+    //Build the full Slater matrix and invert (done only once):
     slater->buildDeterminant(rOld, alpha);
 
-    // loop over Monte Carlo cycles
-    for(int cycle = 0; cycle < mpi_steps; cycle++) {
+    for(int cycle = 0; cycle < mpi_steps; cycle++) { // loop over Monte Carlo cycles
 
-
-        for(int i = 0; i < nParticles; i++) { //Particle
+        for(int i = 0; i < nParticles; i++) { //Loop over particles
 
             ratio = 1.0;
-            qForceOld = slater->gradientWaveFunction(rOld, i, ratio, alpha);
-            cout<<"qForceOld: "<<i<<" "<<qForceOld<<endl;
+            qForceOld = slater->gradientWaveFunction(rOld, i, ratio, alpha); //Get quantum force
 
-            // New position to test
+            // New position current particle
             for(int d = 0; d < nDimensions; d++) {
                 rNew(i,d) = rOld(i,d) + gaussianDeviate(&idum)*sqrt(timestep) + qForceOld(d)*timestep*D;
             }
@@ -208,12 +200,12 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
                 }
             }
 
-            //Get the ratio of the new to the old determinant (wavefunction).
+            //Get the ratio of the new to the old determinant (wavefunction), Slater and correlation factor.
             ratio = slater->getRatioDeterminant(i, rNew, alpha);
             ratioCorr = corr->getRatioJastrow(i, rOld, rNew, beta);
 
+            //Get new quantum force
             qForceNew = slater->gradientWaveFunction(rNew, i, ratio, alpha);
-            cout<<"qForceNew: "<<i<<" "<<qForceNew<<endl;
 
             //Greens function
             double greensFunction = 0;
@@ -224,12 +216,11 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 
             ++count_total;
 
-            cout <<"i, Ratio, corr, green: "<<i<<" "<< ratio<<" "<<ratioCorr<<" "<<greensFunction<<endl;
 
             // Check for step acceptance (if yes, update position and determinant, if no, reset position)
            if(ran2(&idum) <= greensFunction * ratio*ratio * ratioCorr*ratioCorr) {
                 ++accepted_steps;
-               slater->updateDeterminant(rNew, rOld, i, alpha, ratio);
+               slater->updateDeterminant(rNew, rOld, i, alpha, ratio); //Update the Slater determinant
                for(int j = 0; j < nDimensions; j++) {
                     rOld(i,j) = rNew(i,j);   
                 }
@@ -241,13 +232,13 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
             }
 
 
-            // update energies
+           //Get contribution to energy
             deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater,corr);
             energySums(0) += deltaE;
             energySums(1) += deltaE*deltaE;
             allEnergies[cycle] += deltaE;
             cycleE += deltaE;
-            if(minimise_var) {
+            if(minimise_var) { //If optimizer is in use, get expectance value of dPsi/dalpha and dPsi/dbeta
                 deltaPsi = hamiltonian->dPsi(rNew,alpha,beta,slater,corr);
                 deltaPsiE(0) = deltaE*deltaPsi(0);
                 deltaPsiE(1) = deltaE*deltaPsi(1);
@@ -260,7 +251,7 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 
         } //End particle loop
 
-        allEnergies[cycle] += cycleE;
+        allEnergies[cycle] += cycleE; //Store energy for this MC cycle (for blocking method)
         cycleE = 0;
 
     } //End Monte Carlo loop
@@ -272,84 +263,8 @@ vec VMCSolver::MCImportance(long idum, double alpha, double beta, int mpi_steps,
 }
 
 
-vec VMCSolver::MCSampling(long idum, double alpha, double beta, int mpi_steps,
-                           slaterDeterminant *slater, Hamiltonian *hamiltonian,
-                           correlation *corr, double *allEnergies) {
 
-    rOld = zeros<mat>(nParticles, nDimensions);
-    rNew = zeros<mat>(nParticles, nDimensions);
-    int accepted_steps = 0;
-    int count_total = 0;
-    double deltaE = 0;
-    double cycleE = 0;
-    vec energySums = zeros<vec>(2);
-
-
-
-    // initial trial positions
-    for(int i = 0; i < nParticles; i++) {
-        for(int j = 0; j < nDimensions; j++) {
-            rOld(i,j) = stepLength * (ran2(&idum) - 0.5);
-        }
-    }
-    rNew = rOld;
-
-     slater->buildDeterminant(rOld, alpha);
-
-    // loop over Monte Carlo cycles
-    for(int cycle = 0; cycle < mpi_steps; cycle++) {
-
-
-        // New position to test
-        for(int i = 0; i < nParticles; i++) { //Particles
-
-            for(int d = 0; d < nDimensions; d++) {
-                rNew(i,d) = rOld(i,d) + stepLength*(ran2(&idum) - 0.5);
-            }
-
-            ++count_total;
-
-            double ratioSlater = slater->getRatioDeterminant(i, rNew, alpha);
-            double ratioCorr = corr->getRatioJastrow(i, rOld, rNew, beta);
-
-            // Check for step acceptance (if yes, update position, if no, reset position)
-            if(ran2(&idum) <= ratioSlater*ratioSlater*ratioCorr*ratioCorr) {
-                ++accepted_steps;
-                slater->updateDeterminant(rNew, rOld, i, alpha, ratioSlater);
-                for(int d = 0; d < nDimensions; d++) {
-                    rOld(i,d) = rNew(i,d);
-                }
-            }
-            else {
-                for(int d = 0; d < nDimensions; d++) {
-                    rNew(i,d) = rOld(i,d);
-                }
-            }
-
-
-            // update energies
-            deltaE = hamiltonian->localEnergy(rNew, alpha, beta, slater,corr);
-            //deltaE = hamiltonian->analyticEnergyH(rNew, alpha, beta);
-            energySums(0) += deltaE;
-            energySums(1) += deltaE*deltaE;
-            cycleE += deltaE;
-
-        } //Particles
-
-        allEnergies[cycle] += cycleE;
-        cycleE = 0;
-
-    } //Monte Carlo cycles
-
-    //cout << "accepted steps: " << 100*accepted_steps/count_total << "%" << endl;
-
-    return energySums;
-}
-
-
-
-
-
+//Get random numbers with a Gaussian pdf
 double VMCSolver::gaussianDeviate(long *idum) {
 
     static int iset = 0;
@@ -375,6 +290,8 @@ double VMCSolver::gaussianDeviate(long *idum) {
 
 }
 
+
+//Optimization of alpha and beta:
 vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_steps, int *iter, double *fret,
                        slaterDeterminant *slater, correlation *corr, Hamiltonian *hamiltonian)
 {
@@ -397,31 +314,38 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
     double test;
     double step_reduce = 2;
 
-
+    //Get E for current alpha and beta, do MC sample
     vec Es = MCImportance(idum, alpha,beta,min_steps, slater, hamiltonian, corr, allEnergies);
     E = Es(0)/(min_steps * nParticles);
     dPsi(0) = Es(2)/(min_steps * nParticles);
     dPsi(1) = Es(3)/(min_steps * nParticles);
     dPsi_Elocal(0) = Es(4)/(min_steps * nParticles);
     dPsi_Elocal(1) = Es(5)/(min_steps * nParticles);
-    dE = gradE(dPsi, E, dPsi_Elocal);
+    dE = gradE(dPsi, E, dPsi_Elocal);  //Get derivatives of E wrt alpha and beta
 
     cout <<"E: "<<E<<endl;
 
-    while(i<maxIter) {
+    while(i<maxIter) { //Loop until enough iterations
 
-        alpha_new = alpha - alpha_step*dE(0);
-        if(alpha_new < 0) alpha_new = alpha;
+        alpha_new = alpha - alpha_step*dE(0); //Get new value of alpha
+        if(alpha_new < 0) { //If the new alpha is negative,
+            while(alpha_new < 0) { //Reduce step length until new alpha is positive
+                alpha_step = alpha_step/step_reduce;
+                alpha_new = alpha - alpha_step*dE(0);
+            }
+        }
         cout<<"dE alpha: "<<dE(0)<<endl;
         dEold = dE;
 
+        //Get E for current alpha and beta, do MC sample
         Es = MCImportance(idum, alpha_new,beta,min_steps, slater, hamiltonian, corr, allEnergies);
         Enew = Es(0)/(min_steps * nParticles);
         dPsi(0) = Es(2)/(min_steps * nParticles);
         dPsi(1) = Es(3)/(min_steps * nParticles);
         dPsi_Elocal(0) = Es(4)/(min_steps * nParticles);
         dPsi_Elocal(1) = Es(5)/(min_steps * nParticles);
-        dE = gradE(dPsi, E, dPsi_Elocal);
+        dE = gradE(dPsi, E, dPsi_Elocal);  //Get derivatives of E wrt alpha and beta
+        //If derivatives have changed sign, reduce step length
         if(dE(0)*dEold(0) < 0) alpha_step = alpha_step/step_reduce;
         if(dE(1)*dEold(1) < 0) beta_step = beta_step/step_reduce;
         cout <<"Enew: "<<Enew<<endl;
@@ -434,18 +358,24 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
         cout <<"dE, Step: "<< dEold(0)<<" "<<alpha_step << endl;
         cout<<"Enew: "<<Enew<<endl;
 
-        beta_new = beta - beta_step*dE(1);
-        if(beta_new < 0) beta_new = beta;
-        //cout<<"dE beta: "<<dE(1)<<endl;
+        beta_new = beta - beta_step*dE(1); //Get new value of beta
+        if(beta_new < 0) { //If the new beta is negative,
+            while(beta_new < 0) { //Reduce step length until new beta is positive
+                beta_step = beta_step/step_reduce;
+                beta_new = beta - beta_step*dE(1);
+            }
+        }
         dEold = dE;
 
+        //Get E for current alpha and beta, do MC sample
         Es = MCImportance(idum, alpha_new,beta_new,min_steps, slater, hamiltonian, corr, allEnergies);
         Enew = Es(0)/(min_steps * nParticles);
         dPsi(0) = Es(2)/(min_steps * nParticles);
         dPsi(1) = Es(3)/(min_steps * nParticles);
         dPsi_Elocal(0) = Es(4)/(min_steps * nParticles);
         dPsi_Elocal(1) = Es(5)/(min_steps * nParticles);
-        dE = gradE(dPsi, E, dPsi_Elocal);
+        dE = gradE(dPsi, E, dPsi_Elocal);  //Get derivatives of E wrt alpha and beta
+        //If derivatives have changed sign, reduce step length
         if(dE(0)*dEold(0) < 0) alpha_step = alpha_step/step_reduce;
         if(dE(1)*dEold(1) < 0) beta_step = beta_step/step_reduce;
 
@@ -455,8 +385,8 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
         cout <<"----------"<<endl;
 
         test = abs(Enew-E);
-        if(test < gtol) break;
-        E = Enew;
+        if(test < gtol) break;  //If change in energy is smaller than tolerance, break out of loop
+        E = Enew; //Else: Update E, alpha and beta
         alpha = alpha_new;
         beta = beta_new;
 
@@ -471,7 +401,7 @@ vec VMCSolver::steepest_descent(long idum, vec &p, int n, double gtol, int min_s
     return answers;
 }
 
-
+//Get derivatives of energy E wrt alpha, beta
 vec VMCSolver::gradE(vec dPsi, double Elocal, vec dPsi_Elocal) {
 
     vec dE = zeros<vec>(2);
@@ -481,69 +411,4 @@ vec VMCSolver::gradE(vec dPsi, double Elocal, vec dPsi_Elocal) {
     return dE;
 }
 
-
-
-
-void VMCSolver::printFile(const char &file_energies, const char &file_energySquareds, const char &file_sigma, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas)
-{
-
-    ofstream myfile(&file_energies);
-    if (myfile.is_open())
-    {
-        for (unsigned int f=0; f<energies.n_rows; f++)
-        {
-            for (unsigned int l=0; l<energies.n_cols; l++) {
-                myfile << energies(f,l) << " ";
-            }
-            myfile << endl;
-        }
-
-        myfile.close();
-    }
-    else cout << "Unable to open file" << endl;
-
-
-    ofstream myfile2 (&file_alpha);
-    if (myfile2.is_open())
-    {
-        myfile2 << alphas << endl;
-        myfile2 << betas << endl;
-
-        myfile2.close();
-    }
-    else cout << "Unable to open file" << endl;
-
-
-    ofstream myfile3(&file_energySquareds);
-    if (myfile3.is_open())
-    {
-        for (unsigned int f=0; f<energiesSquared.n_rows; f++)
-        {
-            for (unsigned int l=0; l<energiesSquared.n_cols; l++) {
-                myfile3 << energiesSquared(f,l) << " ";
-            }
-            myfile3 << endl;
-        }
-
-        myfile3.close();
-    }
-    else cout << "Unable to open file" << endl;
-
-
-    ofstream myfile4(&file_sigma);
-    if (myfile4.is_open())
-    {
-        for (unsigned int f=0; f<energiesSquared.n_rows; f++)
-        {
-            for (unsigned int l=0; l<energiesSquared.n_cols; l++) {
-                myfile4 << sqrt(energiesSquared(f,l) - energies(f,l)*energies(f,l))<< " ";
-            }
-            myfile4 << endl;
-        }
-
-        myfile4.close();
-    }
-    else cout << "Unable to open file" << endl;
-
-}
 

@@ -8,11 +8,9 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 
+    //Start the solver:
     VMCSolver *solver = new VMCSolver();
-    //VMCImportance *importanceSolver = new VMCImportance();
-
     solver->runMonteCarloIntegration(argc, argv);
-    //importanceSolver->runMonteCarloIntegration(argc, argv);
 
 
     return 0;

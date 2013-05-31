@@ -239,27 +239,3 @@ double WaveFunction::d2Psi2p1(double rtot, int i, const mat &r, double alpha) {
 
 }
 
-
-double WaveFunction::jastrowFactor(const mat &r, double beta) {
-
-    rowvec r12;
-    double r12norm = 0;
-    double jastrow = 0;
-
-    for(int k=0;k<nParticles;k++) {
-        for(int l=0;l<nParticles;l++) {
-            if(k<l) {
-                r12 = r.row(k) - r.row(l);
-                r12norm = 0;
-                for(int j = 0; j < nDimensions; j++) {
-                    r12norm +=  r12(j)*r12(j);
-                }
-                jastrow += r12norm / (2 * (1 + beta * r12norm));
-            }
-        }
-    }
-
-
-    return exp(jastrow);
-
-}

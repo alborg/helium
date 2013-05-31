@@ -2,7 +2,7 @@
 #include "slaterdeterminant.h"
 #include "correlation.h"
 
-Hamiltonian::Hamiltonian(int nDimensions_, double h_, double h2_, int charge_, int nProtons_, int nElectrons_, double R_, const mat &rProtons_) :
+Hamiltonian::Hamiltonian(int nDimensions_, double h_, double h2_, int nProtons_, int nElectrons_, double R_, const mat &rProtons_) :
 
     nDimensions(nDimensions_),
     nProtons(nProtons_),
@@ -10,7 +10,6 @@ Hamiltonian::Hamiltonian(int nDimensions_, double h_, double h2_, int charge_, i
     nParticles(nProtons*nElectrons),
     h(h_),
     h2(h2_),
-    charge(charge_),
     R(R_),
     rProtons(rProtons_)
 {
@@ -72,8 +71,6 @@ vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, slaterDeterminant
 
 
 
-
-
 //Find the kinetic energy part of the local energy
 double Hamiltonian::kineticEnergy(const mat &r, const double &alpha, const double &beta, slaterDeterminant *slater, correlation *corr)
 {
@@ -113,17 +110,16 @@ double Hamiltonian::potentialEnergy(const mat &r)
 
     double potentialE = 0;
 
-    //Contribution from electron - proton potential (1/rep)
+    //Contribution from electron - proton potential (Z/rep)
     double rp = 0;
 
     for(int e=0; e<nParticles; e++) {
         for(int p=0; p<nProtons; p++) {
             rp = 0;
             for(int d=0; d<nDimensions; d++) rp += (r(e,d) - rProtons(p,d))*(r(e,d) - rProtons(p,d));
-            potentialE -= charge/sqrt(rp);
+            potentialE -= 4/sqrt(rp);
         }
     }
-
 
 
     // Contribution from electron-electron potential (1/rij part)
@@ -136,9 +132,9 @@ double Hamiltonian::potentialEnergy(const mat &r)
         }
     }
 
-    //Contribution from proton-proton potential 1/R
+    //Contribution from proton-proton potential Z*Z/R
 
-    potentialE += abs(1/R);
+    potentialE += abs(16/R);
 
 
 

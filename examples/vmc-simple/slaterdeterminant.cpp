@@ -20,7 +20,7 @@ slaterDeterminant::slaterDeterminant(int nParticles_, int nDimensions_):
 {
 }
 
-
+//Build the original Slater determinant, the invert. Done only once.
 void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &beta_) {
 
     vec rs = zeros<vec>(nParticles,1);
@@ -69,12 +69,8 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_, double &b
 }
 
 
+//For testing
 double slaterDeterminant::getDeterminant() {
-
-//    cout << "matrise"<<endl;
-//    cout << slaterMatrixUp << endl;
-//    cout << slaterMatrixDown << endl;
-//    cout <<"----------"<<endl;
 
 
     return det(slaterMatrixUp)*det(slaterMatrixDown);
@@ -82,18 +78,14 @@ double slaterDeterminant::getDeterminant() {
 }
 
 
+//For testing
 double slaterDeterminant::getInvDeterminant() {
-
-//    cout << "inv matr"<<endl;
-//    cout << inv(invSlaterMatrixUp) << endl;
-//    cout << inv(invSlaterMatrixDown) << endl;
-//    cout <<"----------"<<endl;
 
     return 1/(det(invSlaterMatrixUp)*det(invSlaterMatrixDown));
 
 }
 
-
+//Return the ratio of new to old determinant
 double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha, double beta) {
 
     double ratio = 0;
@@ -121,13 +113,14 @@ double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha,
     return ratio;
 }
 
-
+//Testing, for Beryllium atom
 double slaterDeterminant::getRatioDeterminantNum(int i, const mat &rOld, const mat &rNew, double alpha, double beta) {
 
     return beryllium(rNew, alpha) / beryllium(rOld, alpha);
 
 }
 
+//Get all electron states for position r
 vec slaterDeterminant::getStates(const mat &r, int i, double rtot, double alpha, double beta) {
 
     vec updatedStates = zeros<vec>(nParticles/2,1);
@@ -142,7 +135,7 @@ vec slaterDeterminant::getStates(const mat &r, int i, double rtot, double alpha,
 }
 
 
-
+//Update the determinant with rNew
 void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int i, double &alpha_, double &beta_, double ratio) {
 
 
@@ -153,7 +146,7 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
     }
     rtot = sqrt(rtot);
 
-    vec newStates = getStates(rNew, i, rtot, alpha_, beta_);
+    vec newStates = getStates(rNew, i, rtot, alpha_, beta_); //Get all the states
     vec sumSjUp = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
     vec sumSjDown = zeros<vec>(nParticles/2); //Sum over states(l)*d_lj for particles j
 
@@ -196,12 +189,14 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
 
 }
 
+//Get the gradient of the wavwfunction (Slater determinant)
 vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, double alpha, double beta) {
 
     double rtot = 0;
     vec gradient = zeros<vec>(nDimensions,1);
     vec invMatrix = zeros<vec>(nParticles/2,1);
 
+    //Get the correct column of the determinant
     for(int j=0; j<nParticles/2; j++) {
         if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
         else { invMatrix(j) = invSlaterMatrixDown(j,i-nParticles/2); }
@@ -210,6 +205,7 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
     for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); }
     rtot = sqrt(rtot);
 
+    //Get the gradient
     gradient = function->dPsi1s(rtot, i, r, alpha)*(1/ratio)*invMatrix(0); //n=1,l=0,ml=0
     if(nParticles/2 > 1) gradient += function->dPsi2s(rtot, i, r, alpha)*(1/ratio)*invMatrix(1); //n=2,l=0,ml=0
     if(nParticles/2 > 2) gradient += function->dPsi2p_1(rtot, i, r, alpha)*(1/ratio)*invMatrix(2); //n=2,l=1,ml=-1
@@ -217,44 +213,14 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
     if(nParticles/2 > 4) gradient += function->dPsi2p1(rtot, i, r, alpha)*(1/ratio)*invMatrix(4); //n=2,l=1,ml=1
 
 
-    //cout <<"Analytical: " << gradient<< endl;
-
     return gradient;
 
 }
 
-double slaterDeterminant::dWaveFunction_dalpha(const mat &r, double alpha) {
-
-    double rtot = 0;
-    double dalpha = 0;
-    vec invMatrix = zeros<vec>(nParticles/2,1);
-
-    for(int i=0; i<nParticles; i++) {
-
-        invMatrix.fill(0);
-        for(int j=0; j<nParticles/2; j++) {
-            if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
-            else { invMatrix(j) = invSlaterMatrixDown(j,i-nParticles/2); }
-        }
-
-        rtot = 0;
-        for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); }
-        rtot = sqrt(rtot);
-
-        dalpha += function->dPsi1s_dalpha(rtot, alpha)*invMatrix(0); //n=1,l=0,ml=0
-        if(nParticles/2 > 1) dalpha += function->dPsi2s_dalpha(rtot, alpha)*invMatrix(1); //n=2,l=0,ml=0
-        if(nParticles/2 > 2) dalpha += function->dPsi2p_1_dalpha(rtot, i, r, alpha)*invMatrix(2); //n=2,l=1,ml=-1
-        if(nParticles/2 > 3) dalpha += function->dPsi2p0_dalpha(rtot, i, r, alpha)*invMatrix(3); //n=2,l=1,ml=0
-        if(nParticles/2 > 4) dalpha += function->dPsi2p1_dalpha(rtot, i, r, alpha)*invMatrix(4); //n=2,l=1,ml=1
-    }
-
-    return dalpha;
-
-}
 
 
 
-
+//Testing: Get the gradient of the wavwfunction for Be, numerical method
 vec slaterDeterminant::gradientWaveFunctionNum(const mat &r, int i, double alpha_, double beta_) {
 
 vec grad = zeros(nDimensions);
@@ -281,12 +247,12 @@ double waveFunctionPlus = 0;
         rMinus(i,j) = r(i,j);
     }
 
-//cout <<"Numerical: "<< grad << endl;
 
 return grad;
 }
 
 
+//Get the second derivative of the wavefunction (Slater determinant) for kinetic energy in Hamiltonian
 double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double beta) {
 
     double rtot = 0;
@@ -294,12 +260,13 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double
 
     vec invMatrix = zeros<vec>(nParticles/2,1);
 
-    for(int i = 0; i < nParticles; i++) { //Particles
+    for(int i = 0; i < nParticles; i++) { //Loop over all particles
 
         rtot = 0;
         for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); } //Get r for particle
         rtot = sqrt(rtot);
 
+        //Get the correct column of determinant
         invMatrix.fill(0);
         for(int j=0; j<nParticles/2; j++) {
             if(i<nParticles/2) { invMatrix(j) = invSlaterMatrixUp(j,i); }
@@ -315,13 +282,13 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, double alpha, double
 
     }
 
-     //cout <<"Analytical: "<<laplace<<endl;
 
     return laplace;
 
 }
 
 
+//Testing: Get the second derivative of the wavefunction Be for kinetic energy in Hamiltonian
 double slaterDeterminant::laPlaceWaveFunctionNum(const mat &r, double alpha, double beta) {
 
     double h2 = 1000000;
@@ -360,7 +327,7 @@ double slaterDeterminant::laPlaceWaveFunctionNum(const mat &r, double alpha, dou
 
 }
 
-
+//Testing: Slater determinant for Be
 double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {
 
     double rs[nParticles];

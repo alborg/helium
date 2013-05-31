@@ -82,13 +82,65 @@ double Hamiltonian::potentialEnergy(const mat &r)
     return potentialEnergy;
 }
 
-double Hamiltonian::analyticEnergyH(const mat &r, const double &alpha, const double &beta)
+//Find derivative of wavefunction wrt alpha, beta
+vec Hamiltonian::dPsi(const mat &r, double alpha, double beta, WaveFunction *function) {
+
+    vec dPsi = zeros<vec>(2,1);
+
+    double wf = function->waveFunction(r, alpha, beta); //Find wavefunction for r
+
+    //First derivative of wavefunction wrt alpha
+
+
+    double alphaPlus, alphaMinus;
+    alphaPlus = alphaMinus = alpha;
+
+    double waveFunctionMinus = 0;
+    double waveFunctionPlus = 0;
+
+    alphaPlus = alpha+h;
+    alphaMinus = alpha-h;
+
+    waveFunctionMinus = function->waveFunction(r, alphaMinus, beta);
+    waveFunctionPlus = function->waveFunction(r, alphaPlus, beta);
+    dPsi(0) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
+
+
+    //First derivative of wavefunction wrt beta
+    double betaPlus, betaMinus;
+    betaPlus = betaMinus = beta;
+
+    betaPlus = beta+h;
+    betaMinus = beta-h;
+    waveFunctionMinus = function->waveFunction(r,alpha, betaMinus);
+    waveFunctionPlus = function->waveFunction(r,alpha, betaPlus);
+    dPsi(1) = (waveFunctionPlus - waveFunctionMinus)/(2*wf*h);
+
+
+
+    return dPsi;
+}
+
+
+
+
+//The analytic energy of He
+double Hamiltonian::analyticEnergyHe(const mat &r, const double &alpha, const double &beta)
 {
-    double r1 = sqrt(norm(r.row(0),2));
-    double r2 = sqrt(norm(r.row(1),2));
-    double r12 = norm((r.row(1) - r.row(0)),2);
-    double dot_r12;
-    for (int i = 0; i < nDimensions; i++) { dot_r12 += r(0,i)*r(1,i); }
+    double r1 = 0;
+    double r2 = 0;
+    double r12 = 0;
+    double dot_r12 = 0;
+    for(int d=0; d<nDimensions; d++) {
+        r1 += pow(r(0,d),2);
+        r2 += pow(r(1,d),2);
+        r12 += pow(r(0,d) - r(1,d),2);
+        dot_r12 += r(0,d)*r(1,d);
+    }
+    r1 = sqrt(r1);
+    r2 = sqrt(r2);
+    r12 = sqrt(r12);
+
     double energy_l1 = (alpha-charge)*(1/r1 + 1/r2) + 1/r12 - pow(alpha,2);
     double energy_part = ((alpha*(r1+r2))/r12)*(1-dot_r12/(r1*r2)) - 1/(2*pow((1+beta*r12),2)) - 2/r12 + (2*beta)/(1+beta*r12);
     double energy_l2 = energy_l1 + 1/(2*pow((1+beta*r12),2))*energy_part;

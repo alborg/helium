@@ -15,10 +15,13 @@ public:
     void runMonteCarloIntegration(int argc, char* argv[]);
 
 private:
-    void MCImportance(double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies);
+    vec MCImportance(long idum, double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double *allEnergies);
     void MCSampling(double alpha, double beta, int mpi_steps, WaveFunction *function, Hamiltonian *hamiltonian, double &energySum, double &energySquaredSum, double *allEnergies);
     mat quantumForce(const mat &r, double alpha_, double beta_, double wf, WaveFunction *function);
     double gaussianDeviate(long *idum);
+    vec gradE(vec dPsi, double Elocal, vec dPsi_Elocal);
+    vec steepest_descent(long idum, vec &p, int n, double gtol, int min_steps, int *iter, double *fret,
+                           Hamiltonian *hamiltonian, WaveFunction *function);
 
     void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
@@ -45,6 +48,8 @@ private:
     double timestep;
     double D;
     double stepLength;
+    bool minimise_var;
+    int min_steps;
 
 
 };

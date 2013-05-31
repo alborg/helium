@@ -39,7 +39,6 @@ public:
 
 private:
 
-    double jastrowFactor(const mat &r, double beta);
 
     int nDimensions;
     int nParticles;

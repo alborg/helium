@@ -14,6 +14,7 @@ correlation::correlation(int nDimensions_, int nProtons_, int nElectrons_):
 }
 
 
+//Get the correlation factor (Jastrow factor)
 double correlation::jastrow(const mat &r, double beta) {
 
     double exponent=0;
@@ -21,6 +22,7 @@ double correlation::jastrow(const mat &r, double beta) {
     double rij = 0;
     vec factors = zeros<vec>(nParticles);
     factors.fill(1);
+    //Antiparallel spins
     factors(2) = -1;
     factors(3) = -1;
     factors(6) = -1;
@@ -28,7 +30,7 @@ double correlation::jastrow(const mat &r, double beta) {
 
     for(int j=1;j<nParticles;j++) {
         for(int i=0;i<j;i++) {
-            if(factors(i)*factors(j)>0) a=0.25;
+            if(factors(i)*factors(j)>0) a=0.25; //Parallel electron spins
             else a=0.5;
             rij = 0;
             for(int d=0;d<nDimensions;d++) rij += (r(i,d)-r(j,d))*(r(i,d)-r(j,d));
@@ -42,6 +44,7 @@ double correlation::jastrow(const mat &r, double beta) {
 
 }
 
+//Numerical Jastrow
 double correlation::jastrowNum(const mat &r, double beta) {
 
     double r12 = 0;
@@ -59,7 +62,7 @@ double correlation::jastrowNum(const mat &r, double beta) {
             r12 = 0;
             for(int d=0;d<nDimensions;d++) r12 += pow(r(i,d)-r(p,d),2);
             r12 = sqrt(r12);
-             if(factors(i)*factors(p)>0) a=0.25;
+             if(factors(i)*factors(p)>0) a=0.25; //Parallel electron spins
              else a = 0.5;
             wf += a*r12/(1+beta*r12);
 
@@ -70,6 +73,7 @@ double correlation::jastrowNum(const mat &r, double beta) {
 }
 
 
+//Get the ration of new to old Jastrow factor (rNew and rOld)
 double correlation::getRatioJastrow(int i, const mat &rOld, const mat &rNew, double beta) {
 
     double exponent=0;
@@ -85,7 +89,7 @@ double correlation::getRatioJastrow(int i, const mat &rOld, const mat &rNew, dou
 
     for(int j=0;j<nParticles;j++) {
         if(j != i) {
-            if(factors(i)*factors(j)>0) a=0.25;
+            if(factors(i)*factors(j)>0) a=0.25; //Parallel electron spins
             else a=0.5;
             rijNew = 0; rijOld = 0;
             for(int d=0;d<nDimensions;d++) {
@@ -104,7 +108,7 @@ double correlation::getRatioJastrow(int i, const mat &rOld, const mat &rNew, dou
 
 }
 
-
+//Get the gradient of the correlation factor
 vec correlation::gradientWaveFunction(const mat &r, int i, double beta) {
 
     vec grad = zeros<vec>(nDimensions);
@@ -119,7 +123,7 @@ vec correlation::gradientWaveFunction(const mat &r, int i, double beta) {
 
     for(int j=0; j<nParticles; j++) {
         if(j!=i) {
-            if(factors(i)*factors(j)>0) a=0.25;
+            if(factors(i)*factors(j)>0) a=0.25; //Parallel electron spins
             else a=0.5;
             rij = 0;
             for (int d=0; d<nDimensions; d++) { rij += pow((r(i,d)-r(j,d)),2); } //Get r for particle
@@ -133,7 +137,7 @@ vec correlation::gradientWaveFunction(const mat &r, int i, double beta) {
     return grad;
 
 }
-
+//Get the gradient of the correlation factor, numerical method
 vec correlation::gradientWaveFunctionNum(const mat &r, int i, double beta) {
 
     vec grad = zeros(nDimensions);
@@ -163,13 +167,13 @@ vec correlation::gradientWaveFunctionNum(const mat &r, int i, double beta) {
             }
         }
     }
-    //cout <<"Numerical: "<< grad << endl;
 
     return grad;
 }
 
 
 
+//Get the second derivative of the correlation factor
 double correlation::laPlaceWaveFunction(const mat &r, double beta) {
 
     double rik = 0;
@@ -188,11 +192,11 @@ double correlation::laPlaceWaveFunction(const mat &r, double beta) {
 
     for(int k=0; k<nParticles; k++) {
         for(int i = 0; i < nParticles; i++) {
-            if(factors(k)*factors(i)>0) a1=0.25;
+            if(factors(k)*factors(i)>0) a1=0.25; //Parallel electron spins
             else a1=0.5;
             for(int j=0; j<nParticles; j++) {
                 if(i != k && j != k) {
-                    if(factors(k)*factors(j)>0) a2=0.25;
+                    if(factors(k)*factors(j)>0) a2=0.25; //Parallel electron spins
                     else a2=0.5;
                     rik = 0; rjk = 0;
                     for(int d=0;d<nDimensions;d++) {
@@ -212,7 +216,7 @@ double correlation::laPlaceWaveFunction(const mat &r, double beta) {
     for(int k=0; k<nParticles; k++) {
         for(int j=0; j<nParticles; j++) {
             if(j != k) {
-                if(factors(k)*factors(j)>0) a2=0.25;
+                if(factors(k)*factors(j)>0) a2=0.25; //Parallel electron spins
                 else a2=0.5;
                 rjk = 0;
                 for(int d=0;d<nDimensions;d++) {
@@ -229,6 +233,7 @@ double correlation::laPlaceWaveFunction(const mat &r, double beta) {
 
 }
 
+//Get the second derivative of the correlation factor, numerical method
 double correlation::laPlaceWaveFunctionNum(const mat &r, double beta) {
 
     double h2 = 1000000;
@@ -261,7 +266,6 @@ double correlation::laPlaceWaveFunctionNum(const mat &r, double beta) {
     }
     kineticEnergy =  h2 * kineticEnergy / waveFunctionCurrent;
 
-    //cout <<"Numerical: "<<kineticEnergy<<endl;
 
     return kineticEnergy;
 

@@ -24,7 +24,6 @@ public:
     double beryllium(const mat &r, double &alpha);
     vec gradientWaveFunctionNum(const mat &r, int i, double alpha_, double beta_);
     double getRatioDeterminantNum(int i, const mat &rOld, const mat &rNew, double alpha, double beta);
-    double dWaveFunction_dalpha(const mat &r, double alpha);
 
 private:
 

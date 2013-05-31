@@ -32,7 +32,6 @@ private:
     vec steepest_descent(long idum, vec &pnew, int n, double gtol, int min_steps, int *iter, double *fret,
                            slaterDeterminant *slater, correlation *corr, Hamiltonian *hamiltonian);
 
-    void printFile(const char &file_energies, const char &file_energySquareds, const char &file_alpha, const char &file_sigma, const mat &energies, const mat &energiesSquared, const vec alphas, const vec betas);
 
     mat rOld;
     mat rNew;

@@ -11,7 +11,7 @@ correlation::correlation(int nParticles_, int nDimensions_):
 {
 }
 
-
+//Get the correlation factor (Jastrow factor)
 double correlation::jastrow(const mat &r, double beta) {
 
     double exponent=0;
@@ -22,7 +22,7 @@ double correlation::jastrow(const mat &r, double beta) {
         for(int i=0;i<j;i++) {
             int test1 = i-nParticles/2;
             int test2 = j-nParticles/2;
-            if(test1*test2>0) a=0.25;
+            if(test1*test2>0) a=0.25; //If the electrons have parallel spins
             else a=0.5;
             rij = 0;
             for(int d=0;d<nDimensions;d++) rij += (r(i,d)-r(j,d))*(r(i,d)-r(j,d));
@@ -35,6 +35,7 @@ double correlation::jastrow(const mat &r, double beta) {
 
 }
 
+//Numerical Jastrow
 double correlation::jastrowNum(const mat &r, double beta) {
 
     double r12 = 0;
@@ -54,6 +55,7 @@ double correlation::jastrowNum(const mat &r, double beta) {
 }
 
 
+//Get the ration of new to old Jastrow factor (rNew and rOld)
 double correlation::getRatioJastrow(int i, const mat &rOld, const mat &rNew, double beta) {
 
     double exponent=0;
@@ -65,7 +67,7 @@ double correlation::getRatioJastrow(int i, const mat &rOld, const mat &rNew, dou
     for(int j=0;j<nParticles;j++) {
         if(j != i) {
             int test2 = j-nParticles/2;
-            if(test1*test2>0) a=0.25;
+            if(test1*test2>0) a=0.25; //If the electrons have parallel spins
             else a=0.5;
             rijNew = 0; rijOld = 0;
             for(int d=0;d<nDimensions;d++) {
@@ -84,7 +86,7 @@ double correlation::getRatioJastrow(int i, const mat &rOld, const mat &rNew, dou
 
 }
 
-
+//Get the gradient of the correlation factor
 vec correlation::gradientWaveFunction(const mat &r, int i, double beta) {
 
     vec grad = zeros<vec>(nDimensions);
@@ -95,7 +97,7 @@ vec correlation::gradientWaveFunction(const mat &r, int i, double beta) {
     for(int j=0; j<nParticles; j++) {
         if(j!=i) {
             int test2 = j-nParticles/2;
-            if(test1*test2>0) a=0.25;
+            if(test1*test2>0) a=0.25;  //If the electrons have parallel spins
             else a=0.5;
             rij = 0;
             for (int d=0; d<nDimensions; d++) { rij += pow((r(i,d)-r(j,d)),2); } //Get r for particle
@@ -110,6 +112,7 @@ vec correlation::gradientWaveFunction(const mat &r, int i, double beta) {
 
 }
 
+//Get the gradient of the correlation factor, numerical method
 vec correlation::gradientWaveFunctionNum(const mat &r, int i, double beta) {
 
     vec grad = zeros(nDimensions);
@@ -145,7 +148,7 @@ vec correlation::gradientWaveFunctionNum(const mat &r, int i, double beta) {
 }
 
 
-
+//Get the second derivative of the correlation factor
 double correlation::laPlaceWaveFunction(const mat &r, double beta) {
 
     double rik = 0;
@@ -163,12 +166,12 @@ double correlation::laPlaceWaveFunction(const mat &r, double beta) {
         test1 = k-nParticles/2;
         for(int i = 0; i < nParticles; i++) {
             test2 = i-nParticles/2;
-            if(test1*test2>0) a1=0.25;
+            if(test1*test2>0) a1=0.25; //If the electrons have parallel spins
             else a1=0.5;
             for(int j=0; j<nParticles; j++) {
                 if(i != k && j != k) {
                     test3 = j-nParticles/2;
-                    if(test1*test3>0) a2=0.25;
+                    if(test1*test3>0) a2=0.25; //If the electrons have parallel spins
                     else a2=0.5;
                     rik = 0; rjk = 0;
                     for(int d=0;d<nDimensions;d++) {
@@ -190,7 +193,7 @@ double correlation::laPlaceWaveFunction(const mat &r, double beta) {
         for(int j=0; j<nParticles; j++) {
             if(j != k) {
                 int test3 = j-nParticles/2;
-                if(test1*test3>0) a2=0.25;
+                if(test1*test3>0) a2=0.25; //If the electrons have parallel spins
                 else a2=0.5;
                 rjk = 0;
                 for(int d=0;d<nDimensions;d++) {
@@ -207,6 +210,7 @@ double correlation::laPlaceWaveFunction(const mat &r, double beta) {
 
 }
 
+//Get the second derivative of the correlation factor, numerical method
 double correlation::laPlaceWaveFunctionNum(const mat &r, double beta) {
 
     double h2 = 1000000;

@@ -26,7 +26,7 @@ slaterDeterminant::slaterDeterminant(int nDimensions_, int nProtons_, int nElect
 {
 }
 
-
+//Build and invert Slater determinant once
 void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_) {
 
     vec rs = zeros<vec>(nParticles,1);
@@ -70,7 +70,7 @@ void slaterDeterminant::buildDeterminant(const mat &r, double &alpha_) {
     slaterMatrixDown2(0,1) = function->psi2s(rs[6], alpha);
     slaterMatrixDown2(1,1) = function->psi2s(rs[7], alpha);
 
-cout<<rs<<endl;
+//cout<<rs<<endl;
 
     invSlaterMatrixUp1 = inv(slaterMatrixUp1);
     invSlaterMatrixDown1 = inv(slaterMatrixDown1);
@@ -80,20 +80,21 @@ cout<<rs<<endl;
 }
 
 
+//Testing
 double slaterDeterminant::getDeterminant() {
 
     return det(slaterMatrixUp1)*det(slaterMatrixDown1)*det(slaterMatrixUp2)*det(slaterMatrixDown2);
 
 }
 
-
+//Testing
 double slaterDeterminant::getInvDeterminant() {
 
     return 1/(det(invSlaterMatrixUp1)*det(invSlaterMatrixDown1)) * 1/(det(invSlaterMatrixUp2)*det(invSlaterMatrixDown2));
 
 }
 
-
+//Get ration of new to old determinant, after rNew generation
 double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha) {
 
     double ratio = 0;
@@ -133,12 +134,15 @@ double slaterDeterminant::getRatioDeterminant(int i, const mat &r, double alpha)
 }
 
 
+//Testing, analytical ratio
 double slaterDeterminant::getRatioDeterminantNum(int i, const mat &rOld, const mat &rNew, double alpha) {
 
     return beryllium(rNew, alpha) / beryllium(rOld, alpha);
 
 }
 
+
+//Get all electron states
 vec slaterDeterminant::getStates(double rtot, double alpha) {
 
     vec updatedStates = zeros<vec>(nElectrons/2,1);
@@ -150,7 +154,7 @@ vec slaterDeterminant::getStates(double rtot, double alpha) {
 }
 
 
-
+//Update the inverse Slater determinant
 void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int i, double &alpha_, double ratio) {
 
     double rtot = 0;
@@ -161,7 +165,7 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
     }
     rtot = sqrt(rtot);
 
-    vec newStates = getStates(rtot, alpha_);
+    vec newStates = getStates(rtot, alpha_); //Get all electron states
 
     vec sumSj = zeros<vec>(nElectrons/2); //Sum over states(l)*d_lj for particles j
 
@@ -256,6 +260,8 @@ void slaterDeterminant::updateDeterminant(const mat &rNew, const mat &rOld, int 
 
 }
 
+
+//Get the gradient of the Slater determinant
 vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, double alpha) {
 
     vec gradient = zeros<vec>(nDimensions,1);
@@ -271,12 +277,10 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
     double rtot = 0;
     for (int d=0; d<nDimensions; d++) { rtot += r(i,d)*r(i,d); }
     rtot = sqrt(rtot);
-    cout<<i<<" "<<rtot<<" "<<invMatrix<<endl;
 
     gradient = function->dPsi1s(rtot, i, r, alpha)*(1/ratio)*invMatrix(0); //n=1,l=0,ml=0
     gradient += function->dPsi2s(rtot, i, r, alpha)*(1/ratio)*invMatrix(1); //n=2,l=0,ml=0
 
-    //cout <<"Analytical: " << gradient<< endl;
 
     return gradient;
 
@@ -284,7 +288,7 @@ vec slaterDeterminant::gradientWaveFunction(const mat &r, int i, double ratio, d
 
 
 
-
+//Numerical gradient
 vec slaterDeterminant::gradientWaveFunctionNum(const mat &r, int i, double alpha_) {
 
 vec grad = zeros(nDimensions);
@@ -317,6 +321,7 @@ return grad;
 }
 
 
+//Get second derivative, for kinetic energy
 double slaterDeterminant::laPlaceWaveFunction(const mat &r, int i, double alpha) {
 
     double rtot = 0;
@@ -350,6 +355,7 @@ double slaterDeterminant::laPlaceWaveFunction(const mat &r, int i, double alpha)
 }
 
 
+//Second derivative, numerical method
 double slaterDeterminant::laPlaceWaveFunctionNum(const mat &r, double alpha) {
 
     double h2 = 1000000;
@@ -389,6 +395,7 @@ double slaterDeterminant::laPlaceWaveFunctionNum(const mat &r, double alpha) {
 }
 
 
+//Beryllium, for testing
 double slaterDeterminant::beryllium(const mat &r, double &alpha_)  {
 
     double rs[nParticles];
